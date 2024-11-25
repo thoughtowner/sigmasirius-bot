@@ -21,10 +21,11 @@ services:
 
   web:
     build: .
-    command: python async_temp.py
+    command: python3 -m uvicorn src.app:create_app --factory --host 0.0.0.0
     volumes:
       - "./:/code"
-
+    ports:
+      - "8000:8000"
 
 #networks:
 #  sirius:
