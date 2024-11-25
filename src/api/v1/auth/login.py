@@ -9,7 +9,6 @@ from .router import router
 def home(
     body: AuthPost
 ) -> ORJSONResponse:
-
     encoded = jwt.encode(
         {
             "login": body.login,
