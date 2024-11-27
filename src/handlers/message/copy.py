@@ -1,11 +1,9 @@
 from aiogram.types import Message
 
-from src.bot import get_dp
-
-dp = get_dp()
+from .router import router
 
 
-@dp.message()
+@router.message()
 async def echo_handler(message: Message) -> None:
     """
     Handler will forward receive a message back to the sender
@@ -18,4 +16,3 @@ async def echo_handler(message: Message) -> None:
     except TypeError:
         # But not all the types is supported to be copied so need to handle it
         await message.answer("Nice try!")
-
