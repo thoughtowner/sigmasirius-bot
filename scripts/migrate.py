@@ -1,13 +1,20 @@
 import asyncio
+import logging
 
-from src.model.meta import metadata
+from sqlalchemy import text, select
+from sqlalchemy.exc import IntegrityError
+
+from src.model import meta
 from src.storage.db import engine
 
 
 async def migrate():
-    async with engine.begin() as conn:
-        await conn.run_sync(metadata.create_all)
-        await conn.commit()
+    try:
+        async with engine.begin() as conn:
+            await conn.run_sync(meta.metadata.create_all)
+            await conn.commit()
+    except IntegrityError:
+        logging.exception('Already exists')
 
 
 if __name__ == '__main__':

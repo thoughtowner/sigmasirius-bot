@@ -1,7 +1,7 @@
 from uuid import uuid4
 
 from asyncpg import Connection
-from sqlalchemy import NullPool
+from sqlalchemy import AsyncAdaptedQueuePool
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine
 from typing_extensions import AsyncGenerator
 
@@ -16,11 +16,12 @@ class CConnection(Connection):
 def create_engine() -> AsyncEngine:
     return create_async_engine(
         settings.db_url,
-        poolclass=NullPool,
+        poolclass=AsyncAdaptedQueuePool,
         connect_args={
             'connection_class': CConnection,
-            'statement_cache_size': 0,
-            'prepared_statement_cache_size': 0,
+            # 'pool_recycle': 3600,
+            # 'pool_size': 5,
+            # 'pool_overflow': 10,
         },
     )
 

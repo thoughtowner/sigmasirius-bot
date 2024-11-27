@@ -1,6 +1,6 @@
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.schema import MetaData
 from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.schema import MetaData
 
 
 # Recommended naming convention used by Alembic, as various different database
@@ -15,10 +15,13 @@ NAMING_CONVENTION = {
 }
 
 
-DEFAULT_SCHEMA = 'sirius'
+DEFAULT_SCHEMA = 'public'
 
 metadata = MetaData(naming_convention=NAMING_CONVENTION, schema=DEFAULT_SCHEMA)
+# metadata = MetaData(naming_convention=NAMING_CONVENTION, schema=DEFAULT_SCHEMA)
+# Base = declarative_base(metadata=metadata)
 
 
 class Base(DeclarativeBase):
+    metadata = metadata
     __table_args__ = {'schema': DEFAULT_SCHEMA}
