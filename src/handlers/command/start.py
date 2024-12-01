@@ -1,24 +1,18 @@
-from aiogram.filters import CommandStart, Command
+from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
-from aiogram.fsm.state import StatesGroup, State
 from aiogram.types import Message
 
 from .router import router
-
-
-class StartGroup(StatesGroup):
-    first = State()
-    second = State()
+from ..states.auth import AuthGroup
 
 
 @router.message(Command('start'))
 async def start_cmd(message: Message, state: FSMContext) -> None:
-    print(await state.get_state())
-    state_data = await state.get_state()
+    await state.set_state(AuthGroup.no_authorized)
+    await message.answer('Hello!')
 
-    if state_data == StartGroup.first:
-        await state.set_state(StartGroup.second)
-    else:
-        await state.set_state(StartGroup.first)
 
-    await message.answer('hello')
+@router.message()
+async def start_cmd(message: Message, state: FSMContext) -> None:
+    await state.set_state(AuthGroup.authorized)
+    await message.answer('Hello asdasd!')

@@ -1,4 +1,6 @@
 .venv
 .idea
 config/.env
+config/.env.saved
+config/.env.db
 __pycache__/
