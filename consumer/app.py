@@ -1,14 +1,15 @@
-import asyncio
-import logging
+import logging.config
 
 import aio_pika
 import msgpack
 
+from consumer.logger import LOGGING_CONFIG, logger, correlation_id_ctx
 from consumer.storage.rabbit import channel_pool
 
 
 async def main() -> None:
-    logging.basicConfig(level=logging.DEBUG)
+    logging.config.dictConfig(LOGGING_CONFIG)
+    logger.info('Starting consumer...')
 
     queue_name = "test_queue"
 
@@ -21,7 +22,9 @@ async def main() -> None:
         queue = await channel.declare_queue(queue_name, durable=True)
 
         async with queue.iterator() as queue_iter:
-            async for message in queue_iter:
+            async for message in queue_iter: # type: aio_pika.Message
                 async with message.process():
-                    logging.error(message.body)
+                    correlation_id_ctx.set(message.correlation_id)
+                    logger.info("Message ...")
+
                     print(msgpack.unpackb(message.body))

@@ -25,6 +25,7 @@ redis = "^5.2.0"
 hiredis = "^3.0.0"
 aio-pika = "^9.5.1"
 msgpack = "^1.1.0"
+starlette-context = "^0.3.6"
 
 [tool.poetry.group.dev.dependencies]
 autoflake = "1.4"

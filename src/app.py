@@ -5,6 +5,8 @@ import uvicorn
 from aiogram import Dispatcher, Bot
 from aiogram.fsm.storage.redis import RedisStorage
 from fastapi import FastAPI
+from starlette_context import plugins
+from starlette_context.middleware import RawContextMiddleware
 
 from config.settings import settings
 from src.api.v1.router import router as v1_router
@@ -14,11 +16,14 @@ from src.bot import setup_bot, setup_dp
 from src.handlers.callback.router import router as callback_router
 from src.handlers.command.router import router as command_router
 from src.handlers.message.router import router as message_router
+from src.logger import LOGGING_CONFIG, logger
 from src.storage.redis import setup_redis
 
 
 async def lifespan(app: FastAPI) -> None:
-    logging.getLogger("uvicorn").info('Starting lifespan')
+    logging.config.dictConfig(LOGGING_CONFIG)
+
+    logger.info('Starting lifespan')
 
     dp = Dispatcher()
     setup_dp(dp)
@@ -32,7 +37,7 @@ async def lifespan(app: FastAPI) -> None:
     while background_tasks:
         await asyncio.sleep(0)
 
-    logging.getLogger("uvicorn").info('Ending lifespan')
+    logger.info('Ending lifespan')
 
 
 def create_app() -> FastAPI:
@@ -40,6 +45,7 @@ def create_app() -> FastAPI:
     app.include_router(v1_router, prefix='/v1', tags=['v1'])
     app.include_router(tg_router, prefix='/tg', tags=['tg'])
 
+    app.add_middleware(RawContextMiddleware, plugins=[plugins.CorrelationIdPlugin()])
     return app
 
 
@@ -54,17 +60,12 @@ async def start_polling():
     bot = Bot(token=settings.BOT_TOKEN)
     setup_bot(bot)
 
-    dp.include_router(message_router)
     dp.include_router(command_router)
+    dp.include_router(message_router)
     dp.include_router(callback_router)
     await bot.delete_webhook()
 
     logging.error('Dependencies launched')
-
-    # async for key in redis.scan_iter("*"):
-    #     logging.error(f'{key}')
-    # #     await redis.delete(key)
-
     await dp.start_polling(bot)
 
 
