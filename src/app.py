@@ -54,12 +54,16 @@ async def start_polling():
     bot = Bot(token=settings.BOT_TOKEN)
     setup_bot(bot)
 
-    dp.include_router(command_router)
     dp.include_router(message_router)
+    dp.include_router(command_router)
     dp.include_router(callback_router)
     await bot.delete_webhook()
 
     logging.error('Dependencies launched')
+
+    # async for key in redis.scan_iter("*"):
+    #     logging.error(f'{key}')
+    # #     await redis.delete(key)
 
     await dp.start_polling(bot)
 

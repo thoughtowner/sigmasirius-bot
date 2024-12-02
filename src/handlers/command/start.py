@@ -11,10 +11,10 @@ from ..states.auth import AuthGroup
 async def start_cmd(message: Message, state: FSMContext) -> None:
     await state.set_state(AuthGroup.no_authorized)
 
-    await state.set_data({
-        'button1': 1,
-        'button2': 1,
-    })
+    # await state.set_data({
+    #     'button1': 1,
+    #     'button2': 1,
+    # })
 
     # callback buttons
     inline_btn_1 = InlineKeyboardButton(text='Первая кнопка!', callback_data='button1')
