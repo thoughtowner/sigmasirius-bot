@@ -11,15 +11,15 @@ services:
     env_file:
       - config/.env.db
 
-  consumer:
-    build: .
-    command: scripts/startup.sh
-    volumes:
-      - "./:/code"
-    ports:
-      - "8000:8000"
-    env_file:
-      - config/.env
+#  consumer:
+#    build: .
+#    command: scripts/startup.sh
+#    volumes:
+#      - "./:/code"
+#    ports:
+#      - "8000:8000"
+#    env_file:
+#      - config/.env
 
   rabbitmq:
     image: rabbitmq:3.13.7-management

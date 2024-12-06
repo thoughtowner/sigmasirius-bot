@@ -16,6 +16,7 @@ from src.bot import setup_bot, setup_dp
 from src.handlers.callback.router import router as callback_router
 from src.handlers.command.router import router as command_router
 from src.handlers.message.router import router as message_router
+from src.handlers.registration.router import router as registration_router
 from src.logger import LOGGING_CONFIG, logger
 from src.storage.redis import setup_redis
 
@@ -60,9 +61,10 @@ async def start_polling():
     bot = Bot(token=settings.BOT_TOKEN)
     setup_bot(bot)
 
-    dp.include_router(command_router)
-    dp.include_router(message_router)
-    dp.include_router(callback_router)
+    # dp.include_router(command_router)
+    # dp.include_router(message_router)
+    # dp.include_router(callback_router)
+    dp.include_router(registration_router)
     await bot.delete_webhook()
 
     logging.error('Dependencies launched')

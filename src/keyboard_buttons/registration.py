@@ -19,7 +19,7 @@ FLOORS_ROW_BUTTONS = create_single_row_buttons(
     [KeyboardButton(text=floor) for floor in ROOMS_BY_FLOOR.keys()]
 )
 
-ROOMS_BY_FLOOR_ROW_BUTTONS = [
-    {floor: create_single_row_buttons([KeyboardButton(text=room) for room in rooms])}
+ROOMS_BY_FLOOR_ROW_BUTTONS = {
+    floor: create_single_row_buttons([KeyboardButton(text=room) for room in rooms])
     for floor, rooms in ROOMS_BY_FLOOR.items()
-]
+}
