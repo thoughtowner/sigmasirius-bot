@@ -3,8 +3,8 @@ import logging.config
 import aio_pika
 import msgpack
 
-from consumer.logger import LOGGING_CONFIG, logger, correlation_id_ctx
-from consumer.storage.rabbit import channel_pool
+from consumers.consumer.logger import LOGGING_CONFIG, logger, correlation_id_ctx
+from consumers.consumer.storage.rabbit import channel_pool
 
 
 async def main() -> None:
