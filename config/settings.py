@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     REDIS_PORT: str
 
     USER_REGISTRATION_QUEUE_TEMPLATE: str = 'user_registration.{user_id}'
+    REGISTRATION_QUEUE_NAME: str = 'registration_queue'
 
     @property
     def db_url(self) -> str:

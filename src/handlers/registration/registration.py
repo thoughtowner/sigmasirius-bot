@@ -10,7 +10,7 @@ from starlette_context.header_keys import HeaderKeys
 from starlette_context import context
 
 from config.settings import settings
-from consumers.registration_consumer.schema.registration import RegistrationData
+from consumers.registration_consumer.schema.registration_data import RegistrationData
 from ..states.registration import Registration
 from .router import router
 from src.keyboard_buttons.registration import STUDY_GROUPS_ROW_BUTTONS, BUILDINGS_ROW_BUTTONS, ENTRANCES_ROW_BUTTONS, FLOORS_ROW_BUTTONS, ROOMS_BY_FLOOR_ROW_BUTTONS
@@ -159,7 +159,7 @@ async def enter_phone_number(message: Message, state: FSMContext):
             )
 
         async with channel_pool.acquire() as channel:  # type: aio_pika.Channel
-            queue: Queue = await channel.declare_queue(
+            queue = await channel.declare_queue(
                 settings.USER_REGISTRATION_QUEUE_TEMPLATE.format(user_id=message.from_user.id),
                 durable=True,
             )
