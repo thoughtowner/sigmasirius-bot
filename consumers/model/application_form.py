@@ -1,9 +1,15 @@
 from sqlalchemy.orm import Mapped, mapped_column
-from sqlalchemy import Text, String, Integer, BigInteger, Date, Time
+from sqlalchemy import Text, Date, Time, Enum
 
 from src.model.meta import Base
 from datetime import date, time
 
+import enum
+
+
+class ApplicationFormStatus(enum.Enum):
+    NOT_COMPLETED = 1
+    COMPLETED = 2
 
 class ApplicationForm(Base):
     __tablename__ = 'application_form'
@@ -15,4 +21,4 @@ class ApplicationForm(Base):
     photo: Mapped[str] = mapped_column(Text)
     date: Mapped[date] = mapped_column(Date)
     time: Mapped[time] = mapped_column(Time)
-    status: Mapped[str] = mapped_column(String)
+    status: Mapped['ApplicationFormStatus'] = mapped_column(Enum(ApplicationFormStatus))
