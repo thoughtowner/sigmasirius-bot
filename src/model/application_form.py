@@ -9,7 +9,9 @@ import enum
 
 class ApplicationFormStatus(enum.Enum):
     NOT_COMPLETED = 1
-    COMPLETED = 2
+    IN_PROGRESS = 2
+    COMPLETED = 3
+
 
 class ApplicationForm(Base):
     __tablename__ = 'application_form'

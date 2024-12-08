@@ -3,10 +3,8 @@ from aiogram.fsm.state import StatesGroup, State
 
 class Registration(StatesGroup):
     full_name = State()
-    age = State()
-    study_group = State()
+    phone_number = State()
     building = State()
     entrance = State()
     floor = State()
-    room = State()
-    phone_number = State()
+    room_number = State()

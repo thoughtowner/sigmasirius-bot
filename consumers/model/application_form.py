@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy import Text, Date, Time, Enum
 
-from src.model.meta import Base
+from consumers.model.meta import Base
 from datetime import date, time
 
 import enum
@@ -9,7 +9,9 @@ import enum
 
 class ApplicationFormStatus(enum.Enum):
     NOT_COMPLETED = 1
-    COMPLETED = 2
+    IN_PROGRESS = 2
+    COMPLETED = 3
+
 
 class ApplicationForm(Base):
     __tablename__ = 'application_form'

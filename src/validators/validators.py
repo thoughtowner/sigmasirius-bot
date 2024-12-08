@@ -5,8 +5,6 @@ from .base_validator import BaseTgValidator
 MIN_NAME_LEN = 2
 MAX_NAME_LEN = 100
 
-MAX_AGE = 200
-
 PHONE_NUMBER_PATTERN = r'^\+7 \(\d{3}\) \d{3}-\d{2}-\d{2}$'
 
 
@@ -29,16 +27,6 @@ class FullNameValidator(BaseTgValidator):
                 raise e.TooShortNameError
             if part[0].islower():
                 raise e.NameBeginCannotBeLowercaseError
-
-
-class AgeValidator(BaseTgValidator):
-    def _do_validate(self, message: str):
-        if not message.isdigit():
-            if message[0] == '-' and message[1:].isdigit():
-                raise e.AgeShouldBePositiveNumberError
-            raise e.AgeShouldBeNumberError
-        if int(message) >= MAX_AGE:
-            raise e.AgeTooOldError
 
 
 class PhoneNumberValidator(BaseTgValidator):

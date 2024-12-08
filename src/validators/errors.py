@@ -27,17 +27,5 @@ class NameBeginCannotBeLowercaseError(ValidationError):
     pass
 
 
-class AgeShouldBePositiveNumberError(ValidationError):
-    pass
-
-
-class AgeShouldBeNumberError(ValidationError):
-    pass
-
-
-class AgeTooOldError(ValidationError):
-    pass
-
-
 class InvalidPhoneNumberFormatError(ValidationError):
     pass
