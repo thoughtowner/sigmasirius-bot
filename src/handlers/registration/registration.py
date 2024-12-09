@@ -23,9 +23,7 @@ from src.commands import REGISTRATION
 from src.logger import LOGGING_CONFIG, logger
 import logging.config
 
-from aio_pika import Queue
 from aio_pika.exceptions import QueueEmpty
-from typing import Any
 import asyncio
 
 
@@ -46,7 +44,7 @@ async def start_registration(message: Message, state: FSMContext):
     )
 
     async with channel_pool.acquire() as channel:  # type: aio_pika.Channel
-        logger.info('Send data to registration queue...')
+        logger.info('Send data to registration queue for check registration status...')
         registration_exchange = await channel.declare_exchange(settings.REGISTRATION_EXCHANGE_NAME, ExchangeType.DIRECT, durable=True)
         registration_queue = await channel.declare_queue(settings.REGISTRATION_QUEUE_NAME, durable=True)
         await registration_queue.bind(registration_exchange, settings.REGISTRATION_QUEUE_NAME)
@@ -158,15 +156,6 @@ async def enter_room_number(message: Message, state: FSMContext):
     await state.update_data(room_number=room_number)
     data = await state.get_data()
     await state.clear()
-
-    # formatted_data = data.copy()
-    # formatted_data['room'] = f"0{data['building']}-0{data['entrance']}-{data['room_number']}"
-    # del formatted_data['building']
-    # del formatted_data['entrance']
-    # del formatted_data['floor']
-    # del formatted_data['room_number']
-    #
-    # registration_data = RegistrationData(**formatted_data)
 
     registration_data = RegistrationData(
         telegram_user_id=data['telegram_user_id'],

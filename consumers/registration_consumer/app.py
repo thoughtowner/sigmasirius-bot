@@ -26,7 +26,6 @@ async def main() -> None:
 
         await channel.set_qos(prefetch_count=10)
         registration_queue = await channel.declare_queue('registration_queue', durable=True)
-        # registration_queue = await channel.get_queue('registration_queue')
 
         logger.info('Registration consumer started!')
         async with registration_queue.iterator() as queue_iter:
@@ -41,66 +40,6 @@ async def main() -> None:
 
                     try:
                         async with async_session() as db:
-                            # Правильно добавь данные в бд # TODO
-                            #
-                            # db.add(user)
-                            # db.add(resident_additional_data)
-                            # db.add(role)
-
-
-
-                            # db.add(user)
-                            # await db.commit()
-
-                            # role_id = await db.execute(select(Role.id).filter(Role.title == role.title))
-                            # role_id = await db.execute(select(Role).where(Role.c.title == role.title))
-
-                            # user_role =
-
-
-
-                            # db.add(user_instance)
-                            # db.add(resident_additional_data_instance)
-                            # await db.flush()
-                            #
-                            # role_id = db.query(Role.id).filter(Role.title == role_instance.title).scalar()
-                            # # role = db.query(Role).filter(Role.title == role_instance.title).first()
-
-                            # user_id = user_instance.id
-                            # resident_additional_data_id = resident_additional_data_instance.id
-                            #
-                            # user_role = UserRole(user=user_instance, role=role_instance)
-                            # db.add(user_role)
-
-
-
-                            # role_id = db.query(Role.id).filter(Role.title == role_instance.title).scalar()
-                            #
-                            # user_query = insert(User).values(
-                            #     telegram_user_id=user_instance.telegram_user_id,
-                            #     full_name=user_instance.full_name,
-                            #     phone_number=user_instance.phone_number,
-                            # ).returning(User.c.id)
-                            #
-                            # user_result = db.execute(user_query)
-                            # user_id = user_result.scalar()
-                            #
-                            # resident_additional_data_query = insert(ResidentAdditionalData).values(
-                            #     room=resident_additional_data_instance.room,
-                            #     user_id=user_id
-                            # )
-                            #
-                            # db.execute(resident_additional_data_query)
-                            #
-                            # user_role_query = insert(UserRole).values(
-                            #     user_id=user_id,
-                            #     role_id=role_id,
-                            # )
-                            #
-                            # db.execute(user_role_query)
-
-
-
                             role_result = await db.execute(select(Role.id).filter(Role.title == role_instance.title))
                             role_id = role_result.scalar()
 
@@ -126,11 +65,7 @@ async def main() -> None:
                             )
 
                             await db.execute(user_role_query)
-
                             await db.commit()
-
-
-
 
                             async with channel_pool.acquire() as _channel:
                                 registration_exchange = await _channel.get_exchange('registration_exchange')
