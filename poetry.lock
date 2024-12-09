@@ -2071,6 +2071,16 @@ files = [
 ]
 
 [[package]]
+name = "uuid"
+version = "1.30"
+description = "UUID object and generation functions (Python 2.3 or higher)"
+optional = false
+python-versions = "*"
+files = [
+    {file = "uuid-1.30.tar.gz", hash = "sha256:1f87cc004ac5120466f36c5beae48b4c48cc411968eed0eaecd3da82aa96193f"},
+]
+
+[[package]]
 name = "uvicorn"
 version = "0.32.1"
 description = "The lightning-fast ASGI server."
@@ -2238,4 +2248,4 @@ propcache = ">=0.2.0"
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "e96551d3c73dfca53ecd1d1a1c8ca02af51a523d007a34b2e2bce069c58e83b4"
+content-hash = "d346bef08674f367b331562ee64763f79f81618cb16a52679e51632ccb1ecc4b"

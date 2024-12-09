@@ -1,11 +1,10 @@
-from consumers.model.user import User, Role, ResidentAdditionalData
+from consumers.model.models import User, Role, ResidentAdditionalData, ApplicationForm
 from consumers.registration_consumer.schema.registration_data import RegistrationData
 
 
 def from_registration_data_to_user(registration_data: RegistrationData) -> User:
-    print(registration_data)
     return User(
-        telegram_id=registration_data['user_id'],
+        telegram_user_id=registration_data['telegram_user_id'],
         full_name=registration_data['full_name'],
         phone_number=registration_data['phone_number']
     )

@@ -19,7 +19,8 @@ class Settings(BaseSettings):
     REDIS_HOST: str
     REDIS_PORT: int
 
-    USER_REGISTRATION_QUEUE_TEMPLATE: str = 'user_registration_queue.{user_id}'
+    REGISTRATION_EXCHANGE_NAME: str = 'registration_exchange'
+    USER_REGISTRATION_QUEUE_TEMPLATE: str = 'user_registration_queue.{telegram_user_id}'
     REGISTRATION_QUEUE_NAME: str = 'registration_queue'
 
     @property

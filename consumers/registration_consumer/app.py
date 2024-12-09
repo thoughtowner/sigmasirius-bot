@@ -8,10 +8,14 @@ from storage.rabbit import channel_pool
 
 from ..mappers.user_mapper import from_registration_data_to_user, from_registration_data_to_resident_additional_data, from_registration_data_to_role
 from config.settings import settings
-from src.storage.db import async_session
+from storage.db import async_session
 
 from aio_pika import ExchangeType
 from sqlalchemy.exc import IntegrityError
+
+from consumers.model.models import User, Role, ResidentAdditionalData, UserRole
+from sqlalchemy.future import select
+from sqlalchemy import insert
 
 
 async def main() -> None:
@@ -21,37 +25,144 @@ async def main() -> None:
     async with channel_pool.acquire() as channel:  # type: aio_pika.Channel
 
         await channel.set_qos(prefetch_count=10)
+        registration_queue = await channel.declare_queue('registration_queue', durable=True)
+        # registration_queue = await channel.get_queue('registration_queue')
 
-        queue = await channel.declare_queue(settings.REGISTRATION_QUEUE_NAME, durable=True)
-
-        async with queue.iterator() as queue_iter:
+        logger.info('Registration consumer started!')
+        async with registration_queue.iterator() as queue_iter:
             async for message in queue_iter: # type: aio_pika.Message
                 async with message.process():
                     # correlation_id_ctx.set(message.correlation_id)
                     registration_data = msgpack.unpackb(message.body)
                     logger.info("Received message %s", registration_data)
-                    user = from_registration_data_to_user(registration_data)
-                    resident_additional_data = from_registration_data_to_resident_additional_data(registration_data)
-                    role = from_registration_data_to_role(registration_data)
-
-                    _queue_name = settings.USER_REGISTRATION_QUEUE_TEMPLATE.format(user_id=registration_data['user_id'])
+                    user_instance = from_registration_data_to_user(registration_data)
+                    resident_additional_data_instance = from_registration_data_to_resident_additional_data(registration_data)
+                    role_instance = from_registration_data_to_role(registration_data)
 
                     try:
                         async with async_session() as db:
-                            db.add(user)
-                            db.add(resident_additional_data)
-                            db.add(role)
+                            # Правильно добавь данные в бд # TODO
+                            #
+                            # db.add(user)
+                            # db.add(resident_additional_data)
+                            # db.add(role)
+
+
+
+                            # db.add(user)
+                            # await db.commit()
+
+                            # role_id = await db.execute(select(Role.id).filter(Role.title == role.title))
+                            # role_id = await db.execute(select(Role).where(Role.c.title == role.title))
+
+                            # user_role =
+
+
+
+                            # db.add(user_instance)
+                            # db.add(resident_additional_data_instance)
+                            # await db.flush()
+                            #
+                            # role_id = db.query(Role.id).filter(Role.title == role_instance.title).scalar()
+                            # # role = db.query(Role).filter(Role.title == role_instance.title).first()
+
+                            # user_id = user_instance.id
+                            # resident_additional_data_id = resident_additional_data_instance.id
+                            #
+                            # user_role = UserRole(user=user_instance, role=role_instance)
+                            # db.add(user_role)
+
+
+
+                            # role_id = db.query(Role.id).filter(Role.title == role_instance.title).scalar()
+                            #
+                            # user_query = insert(User).values(
+                            #     telegram_user_id=user_instance.telegram_user_id,
+                            #     full_name=user_instance.full_name,
+                            #     phone_number=user_instance.phone_number,
+                            # ).returning(User.c.id)
+                            #
+                            # user_result = db.execute(user_query)
+                            # user_id = user_result.scalar()
+                            #
+                            # resident_additional_data_query = insert(ResidentAdditionalData).values(
+                            #     room=resident_additional_data_instance.room,
+                            #     user_id=user_id
+                            # )
+                            #
+                            # db.execute(resident_additional_data_query)
+                            #
+                            # user_role_query = insert(UserRole).values(
+                            #     user_id=user_id,
+                            #     role_id=role_id,
+                            # )
+                            #
+                            # db.execute(user_role_query)
+
+
+
+                            role_result = await db.execute(select(Role.id).filter(Role.title == role_instance.title))
+                            role_id = role_result.scalar()
+
+                            user_query = insert(User).values(
+                                telegram_user_id=user_instance.telegram_user_id,
+                                full_name=user_instance.full_name,
+                                phone_number=user_instance.phone_number,
+                            ).returning(User.id)
+
+                            user_result = await db.execute(user_query)
+                            user_id = user_result.scalar()
+
+                            resident_additional_data_query = insert(ResidentAdditionalData).values(
+                                room=resident_additional_data_instance.room,
+                                user_id=user_id
+                            )
+
+                            await db.execute(resident_additional_data_query)
+
+                            user_role_query = insert(UserRole).values(
+                                user_id=user_id,
+                                role_id=role_id,
+                            )
+
+                            await db.execute(user_role_query)
+
                             await db.commit()
 
+
+
+
                             async with channel_pool.acquire() as _channel:
-                                _exchange = await _channel.declare_exchange("registration_exchange", ExchangeType.DIRECT, durable=True)
-                                _queue = await channel.declare_queue(_queue_name, durable=True)
-                                await _queue.bind(_exchange, '1')
-                                await _exchange.publish(aio_pika.Message(msgpack.packb(True)), '1')
+                                registration_exchange = await _channel.get_exchange('registration_exchange')
+                                user_registration_queue = await _channel.declare_queue(
+                                    f'user_registration_queue.{registration_data["telegram_user_id"]}',
+                                    durable=True
+                                )
+                                await user_registration_queue.bind(
+                                    registration_exchange,
+                                    f'user_registration_queue.{registration_data["telegram_user_id"]}'
+                                )
+                                await registration_exchange.publish(
+                                    aio_pika.Message(msgpack.packb(True)),
+                                    f'user_registration_queue.{registration_data["telegram_user_id"]}'
+                                )
                     except IntegrityError:
                         logger.info("This user with this data is already registered: %s", registration_data)
                         async with channel_pool.acquire() as _channel:
-                            _exchange = await _channel.declare_exchange("registration_exchange", ExchangeType.DIRECT, durable=True)
-                            _queue = await channel.declare_queue(_queue_name, durable=True)
-                            await _queue.bind(_exchange, '1')
-                            await _exchange.publish(aio_pika.Message(msgpack.packb(False)), '1')
+                            registration_exchange = await _channel.declare_exchange("registration_exchange", ExchangeType.DIRECT, durable=True)
+                            user_registration_queue = await _channel.declare_queue(
+                                f'user_registration_queue.{registration_data["telegram_user_id"]}',
+                                durable=True,
+                            )
+                            await user_registration_queue.bind(
+                                registration_exchange,
+                                settings.USER_REGISTRATION_QUEUE_TEMPLATE.format(
+                                    telegram_user_id=registration_data['telegram_user_id']
+                                )
+                            )
+                            await registration_exchange.publish(
+                                aio_pika.Message(msgpack.packb(False)),
+                                settings.USER_REGISTRATION_QUEUE_TEMPLATE.format(
+                                    telegram_user_id=registration_data['telegram_user_id']
+                                )
+                            )
