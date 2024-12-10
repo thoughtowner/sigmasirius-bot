@@ -190,7 +190,7 @@ async def enter_room_number(message: Message, state: FSMContext):
         retries = 3
         for _ in range(retries):
             try:
-                registration_response_message = await user_registration_queue.get()
+                registration_response_message = await user_registration_queue.get(no_ack=True)
                 registration_flag = msgpack.unpackb(registration_response_message.body)
 
                 answer = msg.SUCCESS_REGISTER if registration_flag else msg.ALREADY_REGISTER

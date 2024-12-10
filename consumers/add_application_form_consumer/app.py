@@ -13,8 +13,19 @@ from storage.db import async_session
 from aio_pika import ExchangeType
 from sqlalchemy.exc import IntegrityError
 
-from consumers.model.models import User, ApplicationForm
+from consumers.model.models import User, ApplicationForm, ResidentAdditionalData, ApplicationFormStatus
 from sqlalchemy import insert, select
+
+from consumers.add_application_form_consumer.schema.application_form_for_admins_data import ApplicationFormForAdminsData
+
+from aiogram import Bot
+from aiogram.client.default import DefaultBotProperties
+from aiogram.enums import ParseMode
+from src.templates.env import render
+
+
+default = DefaultBotProperties(parse_mode=ParseMode.HTML)
+bot = Bot(token=settings.BOT_TOKEN, default=default)
 
 
 async def main() -> None:
@@ -48,12 +59,46 @@ async def main() -> None:
                                 photo=application_form_instance.photo,
                                 status_id=application_form_instance.status_id,
                                 user_id=user_id
-                            )
+                            ).returning(ApplicationForm.id)
 
-                            await db.execute(application_form_query)
+                            application_form_result = await db.execute(application_form_query)
+                            application_form_id = application_form_result.scalar()
                             await db.commit()
 
-                            # Забираю из базы заявку заджоеную с данными пользователя, чтобы потом отправить её админам TODO
+                            application_form_for_admins_query = (
+                                select(
+                                    User.telegram_user_id,
+                                    ResidentAdditionalData.full_name,
+                                    ResidentAdditionalData.phone_number,
+                                    ResidentAdditionalData.room,
+                                    ApplicationForm.title,
+                                    ApplicationForm.description,
+                                    ApplicationForm.photo,
+                                    ApplicationFormStatus.title
+                                )
+                                .join(ResidentAdditionalData, ResidentAdditionalData.user_id == User.id)
+                                .join(ApplicationForm, ApplicationForm.user_id == User.id)
+                                .join(ApplicationFormStatus, ApplicationFormStatus.id == ApplicationForm.status_id)
+                                .where(ApplicationForm.id == application_form_id)
+                            )
+
+                            application_form_for_admins_result = await db.execute(application_form_for_admins_query)
+                            application_form_for_admins = application_form_for_admins_result.fetchone()
+
+                            parsed_application_form_for_admins = ApplicationFormForAdminsData(
+                                telegram_user_id=application_form_for_admins[0],
+                                resident_full_name=application_form_for_admins[1],
+                                resident_phone_number=application_form_for_admins[2],
+                                resident_room=application_form_for_admins[3],
+                                title=application_form_for_admins[4],
+                                description=application_form_for_admins[5],
+                                photo=application_form_for_admins[6],
+                                status=application_form_for_admins[7]
+                            )
+
+                            print(parsed_application_form_for_admins)
+
+                            await bot.send_message(text='parsed_application_form_for_admins', chat_id=parsed_application_form_for_admins['telegram_user_id'], parse_mode=render('application_form_for_admins/application_form_for_admins.jinja2', application_form_for_admins=parsed_application_form_for_admins),)
 
                         # Отправить ответное сообщение из консюмера напрямую в бота TODO
                         # Отправить заявку напрямую админам TODO
