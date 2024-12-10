@@ -52,5 +52,7 @@ async def start(message: Message, state: FSMContext):
 
     await state.set_state(Start.info)
     await message.answer(msg.INFO)
-    await message.answer('Привет!')
+    await message.answer('/registration')
+    await message.answer('/add_application_form')
+    await message.answer('/listening_application_forms')
     await state.clear()

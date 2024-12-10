@@ -38,7 +38,7 @@ async def start_registration(message: Message, state: FSMContext):
     registration_data = RegistrationData(
         telegram_user_id=data['telegram_user_id'],
         role=data['role'],
-        full_name='',
+        full_name='check_registration',
         phone_number='',
         room=''
     )
