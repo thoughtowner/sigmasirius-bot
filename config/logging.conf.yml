@@ -3,20 +3,25 @@ disable_existing_loggers: no
 formatters:
   console_formatter_backend:
     (): src.logger.ConsoleFormatter
-  console_formatter_consumer:
-    (): consumers.consumer.logger.ConsoleFormatter
+  console_formatter_start_consumer:
+    (): consumers.start_consumer.logger.ConsoleFormatter
   console_formatter_registration_consumer:
     (): consumers.registration_consumer.logger.ConsoleFormatter
+  console_formatter_add_application_form_consumer:
+    (): consumers.add_application_form_consumer.logger.ConsoleFormatter
 handlers:
   console_handler_backend:
     class: logging.StreamHandler
     formatter: console_formatter_backend
-  console_handler_consumer:
+  console_handler_start_consumer:
     class: logging.StreamHandler
-    formatter: console_formatter_consumer
+    formatter: console_formatter_start_consumer
   console_handler_registration_consumer:
     class: logging.StreamHandler
     formatter: console_formatter_registration_consumer
+  console_handler_add_application_form_consumer:
+    class: logging.StreamHandler
+    formatter: console_formatter_add_application_form_consumer
 root:
   level: INFO
   handlers: [console_handler_backend]
@@ -25,14 +30,18 @@ loggers:
     level: INFO
     propagate: no
     handlers: [console_handler_backend]
-  'consumer_logger':
+  'start_consumer_logger':
     level: INFO
     propagate: no
-    handlers: [console_handler_consumer]
+    handlers: [console_handler_start_consumer]
   'registration_consumer_logger':
     level: INFO
     propagate: no
     handlers: [ console_handler_registration_consumer ]
+  'add_application_form_consumer_logger':
+    level: INFO
+    propagate: no
+    handlers: [ console_handler_add_application_form_consumer ]
   'uvicorn':
     level: INFO
     propagate: no

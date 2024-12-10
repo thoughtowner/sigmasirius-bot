@@ -19,9 +19,16 @@ class Settings(BaseSettings):
     REDIS_HOST: str
     REDIS_PORT: int
 
+    START_EXCHANGE_NAME: str = 'start_exchange'
+    START_QUEUE_NAME: str = 'start_queue'
+
     REGISTRATION_EXCHANGE_NAME: str = 'registration_exchange'
     USER_REGISTRATION_QUEUE_TEMPLATE: str = 'user_registration_queue.{telegram_user_id}'
     REGISTRATION_QUEUE_NAME: str = 'registration_queue'
+
+    ADD_APPLICATION_FORM_EXCHANGE_NAME: str = 'add_application_form_exchange'
+    ADD_APPLICATION_FORM_QUEUE_NAME: str = 'add_application_form_queue'
+
 
     @property
     def db_url(self) -> str:

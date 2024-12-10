@@ -1,11 +1,9 @@
 from uuid import UUID, uuid4
 from typing import List
-from sqlalchemy import  String, Text, BigInteger, Date, Time, Enum, ForeignKey, UniqueConstraint
+from sqlalchemy import  String, Text, BigInteger, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from consumers.model.meta import Base
-from datetime import date, time
-import enum
 
 
 class User(Base):
@@ -18,11 +16,10 @@ class User(Base):
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
 
     telegram_user_id: Mapped[int] = mapped_column(BigInteger)
-    full_name: Mapped[str] = mapped_column(Text, index=True)
-    phone_number: Mapped[str] = mapped_column(String)
 
     roles: Mapped[List['UserRole']] = relationship(back_populates='user')
     resident_additional_data: Mapped['ResidentAdditionalData'] = relationship(back_populates='user')
+    admin_additional_data: Mapped['AdminAdditionalData'] = relationship(back_populates='user')
     application_forms: Mapped['ApplicationForm'] = relationship(back_populates='user')
 
 
@@ -65,29 +62,60 @@ class ResidentAdditionalData(Base):
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
 
+    full_name: Mapped[str] = mapped_column(Text, index=True)
+    phone_number: Mapped[str] = mapped_column(String)
     room: Mapped[str] = mapped_column(String)
 
     user_id: Mapped[UUID] = mapped_column(ForeignKey('user.id'))
     user: Mapped['User'] = relationship(back_populates='resident_additional_data')
 
 
-class ApplicationFormStatus(enum.Enum):
-    NOT_COMPLETED = 1
-    IN_PROGRESS = 2
-    COMPLETED = 3
+class AdminAdditionalData(Base):
+    __tablename__ = 'admin_additional_data'
+
+    __table_args__ = (
+        UniqueConstraint('id', 'user_id', name='admin_additional_data_id_unique_combined_user_id'),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+
+    full_name: Mapped[str] = mapped_column(Text, index=True)
+    phone_number: Mapped[str] = mapped_column(String)
+
+    user_id: Mapped[UUID] = mapped_column(ForeignKey('user.id'))
+    user: Mapped['User'] = relationship(back_populates='admin_additional_data')
 
 
 class ApplicationForm(Base):
     __tablename__ = 'application_form'
 
-    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
 
-    text: Mapped[str] = mapped_column(Text)
-    description: Mapped[int] = mapped_column(Text)
+    title: Mapped[str] = mapped_column(Text)
+    description: Mapped[str] = mapped_column(Text)
     photo: Mapped[str] = mapped_column(Text)
-    date: Mapped[date] = mapped_column(Date)
-    time: Mapped[time] = mapped_column(Time)
-    status: Mapped['ApplicationFormStatus'] = mapped_column(Enum(ApplicationFormStatus))
+
+    # status: Mapped['ApplicationFormStatus'] = relationship(back_populates='application_form')
+
+    status_id: Mapped[UUID] = mapped_column(ForeignKey('application_form_status.id'))
+    status: Mapped['ApplicationFormStatus'] = relationship(back_populates='application_form')
 
     user_id: Mapped[UUID] = mapped_column(ForeignKey('user.id'))
     user: Mapped['User'] = relationship(back_populates='application_forms')
+
+
+class ApplicationFormStatus(Base):
+    __tablename__ = 'application_form_status'
+
+    __table_args__ = (
+        UniqueConstraint('title', name='application_form_status_unique_title'),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+
+    title: Mapped[str] = mapped_column(String)
+
+    # application_form_id: Mapped[UUID] = mapped_column(ForeignKey('application_form.id'))
+    # application_form: Mapped['ApplicationForm'] = relationship(back_populates='status')
+
+    application_form: Mapped['ApplicationForm'] = relationship(back_populates='status')

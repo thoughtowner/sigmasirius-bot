@@ -21,6 +21,10 @@ INVALID_ENTRANCE = 'Введён неверный подъезд!'
 INVALID_FLOOR = 'Введён неверный этаж!'
 INVALID_ROOM_NUMBER = 'Введен неверный номер комнаты!'
 
+# info messages
+
+PUSH_INTO_REGISTRATION_QUERY = 'Заявка отправлена в очередь на регистрацию, ожидайте...'
+
 # completion messages
 
 SUCCESS_REGISTER = 'Вы успешно зарегистрировались!'

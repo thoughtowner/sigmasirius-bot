@@ -11,12 +11,12 @@ from starlette_context import context
 
 from config.settings import settings
 from consumers.registration_consumer.schema.registration_data import RegistrationData
-from ..states.registration import Registration
+from src.states.registration import Registration
 from .router import router
 from src.keyboard_buttons.registration import BUILDINGS_ROW_BUTTONS, ENTRANCES_ROW_BUTTONS, FLOORS_ROW_BUTTONS, ROOM_NUMBERS_BY_FLOOR_ROW_BUTTONS
 from aiogram.types import ReplyKeyboardRemove
-from src.validators.validators import FullNameValidator, PhoneNumberValidator
-from src.validators import errors as validation
+from src.validators.registration.validators import FullNameValidator, PhoneNumberValidator
+from src.validators.registration import errors as validation
 from src.messages import registration as msg
 from src.keyboard_buttons.texts import BUILDINGS, ENTRANCES, ROOM_NUMBERS_BY_FLOOR
 from src.commands import REGISTRATION
@@ -155,6 +155,7 @@ async def enter_room_number(message: Message, state: FSMContext):
         return
     await state.update_data(room_number=room_number)
     data = await state.get_data()
+    await message.answer(msg.PUSH_INTO_REGISTRATION_QUERY, reply_markup=ReplyKeyboardRemove())
     await state.clear()
 
     registration_data = RegistrationData(
@@ -175,7 +176,7 @@ async def enter_room_number(message: Message, state: FSMContext):
             aio_pika.Message(
                 msgpack.packb(registration_data),
                 # correlation_id=correlation_id_ctx.get()
-                # correlation_id=context.get(HeaderKeys.correlation_id)
+                # # correlation_id=context.get(HeaderKeys.correlation_id)
             ),
             settings.REGISTRATION_QUEUE_NAME
         )
@@ -193,7 +194,7 @@ async def enter_room_number(message: Message, state: FSMContext):
                 registration_flag = msgpack.unpackb(registration_response_message.body)
 
                 answer = msg.SUCCESS_REGISTER if registration_flag else msg.ALREADY_REGISTER
-                await message.answer(answer, reply_markup=ReplyKeyboardRemove())
+                await message.answer(answer)
                 return
             except QueueEmpty:
                 await asyncio.sleep(1)

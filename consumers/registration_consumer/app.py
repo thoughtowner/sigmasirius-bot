@@ -6,7 +6,7 @@ import msgpack
 from logger import LOGGING_CONFIG, logger, correlation_id_ctx
 from storage.rabbit import channel_pool
 
-from ..mappers.user_mapper import from_registration_data_to_user, from_registration_data_to_resident_additional_data, from_registration_data_to_role
+from ..mappers import from_registration_data_to_user, from_registration_data_to_resident_additional_data, from_registration_data_to_role
 from config.settings import settings
 from storage.db import async_session
 
@@ -14,8 +14,7 @@ from aio_pika import ExchangeType
 from sqlalchemy.exc import IntegrityError
 
 from consumers.model.models import User, Role, ResidentAdditionalData, UserRole
-from sqlalchemy.future import select
-from sqlalchemy import insert
+from sqlalchemy import select, insert, exists
 
 
 async def main() -> None:
@@ -25,6 +24,7 @@ async def main() -> None:
     async with channel_pool.acquire() as channel:  # type: aio_pika.Channel
 
         await channel.set_qos(prefetch_count=10)
+
         registration_queue = await channel.declare_queue('registration_queue', durable=True)
 
         logger.info('Registration consumer started!')
@@ -43,16 +43,34 @@ async def main() -> None:
                             role_result = await db.execute(select(Role.id).filter(Role.title == role_instance.title))
                             role_id = role_result.scalar()
 
-                            user_query = insert(User).values(
-                                telegram_user_id=user_instance.telegram_user_id,
-                                full_name=user_instance.full_name,
-                                phone_number=user_instance.phone_number,
-                            ).returning(User.id)
-
-                            user_result = await db.execute(user_query)
+                            user_result = await db.execute(select(User.id).filter(User.telegram_user_id == user_instance.telegram_user_id))
                             user_id = user_result.scalar()
 
+                            print(role_result, user_result)
+
+                            # is_user_role_exists_query = await db.execute(select(exists().where(
+                            #     UserRole.user_id == user_id,
+                            #     UserRole.role_id == role_id
+                            # )))
+                            #
+                            # is_user_role_exists = is_user_role_exists_query.scalar()
+
+                            user_role_exists_query = await db.execute(select(UserRole).where(
+                                UserRole.user_id == user_id,
+                                UserRole.role_id == role_id
+                            ))
+                            user_role_exists_result = user_role_exists_query.fetchall()
+
+                            if user_role_exists_result:
+                                raise IntegrityError(
+                                    statement='',
+                                    params={},
+                                    orig=BaseException()
+                                )
+
                             resident_additional_data_query = insert(ResidentAdditionalData).values(
+                                full_name=resident_additional_data_instance.full_name,
+                                phone_number=resident_additional_data_instance.phone_number,
                                 room=resident_additional_data_instance.room,
                                 user_id=user_id
                             )

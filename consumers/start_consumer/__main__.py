@@ -1,6 +1,6 @@
 import asyncio
 
-from consumers.registration_consumer.app import main
+from consumers.start_consumer.app import main
 
 
 if __name__ == '__main__':
