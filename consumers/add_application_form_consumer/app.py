@@ -13,7 +13,7 @@ from storage.db import async_session
 from aio_pika import ExchangeType
 from sqlalchemy.exc import IntegrityError
 
-from consumers.model.models import User, ApplicationForm, ResidentAdditionalData, ApplicationFormStatus
+from consumers.model.models import User, Role, ApplicationForm, ResidentAdditionalData, ApplicationFormStatus, UserRole
 from sqlalchemy import insert, select
 
 from consumers.add_application_form_consumer.schema.application_form_for_admins_data import ApplicationFormForAdminsData
@@ -96,12 +96,31 @@ async def main() -> None:
                                 status=application_form_for_admins[7]
                             )
 
-                            print(parsed_application_form_for_admins)
+                            admin_role_id_result = await db.execute(
+                                select(Role.id).filter(Role.title == 'admin')
+                            )
+                            admin_role_id = admin_role_id_result.scalar()
 
-                            await bot.send_message(text='parsed_application_form_for_admins', chat_id=parsed_application_form_for_admins['telegram_user_id'], parse_mode=render('application_form_for_admins/application_form_for_admins.jinja2', application_form_for_admins=parsed_application_form_for_admins),)
+                            admin_ids_query = await db.execute(
+                                select(UserRole.user_id).filter(UserRole.role_id == admin_role_id)
+                            )
+                            admin_ids = admin_ids_query.scalars().all()
 
-                        # Отправить ответное сообщение из консюмера напрямую в бота TODO
-                        # Отправить заявку напрямую админам TODO
+                            for admin_id in admin_ids:
+                                # await bot.send_message(
+                                #     text=render('application_form_for_admins/application_form_for_admins.jinja2',
+                                #                 application_form_for_admins=parsed_application_form_for_admins),
+                                #     chat_id=admin_id
+                                # )
+
+                                await bot.send_photo(
+                                    photo=msgpack.unpackb(parsed_application_form_for_admins['photo']),
+                                    caption=render('application_form_for_admins/application_form_for_admins.jinja2',
+                                                   application_form_for_admins=parsed_application_form_for_admins),
+                                    chat_id=admin_id
+                                )
                     except IntegrityError:
-                        pass
-                        # Отправить ответное сообщение из консюмера напрямую в бота TODO
+                        await bot.send_message(
+                            text='При отправке заявки что-то пошло не так!',
+                            chat_id=admin_id
+                        )
