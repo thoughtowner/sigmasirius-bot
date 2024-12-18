@@ -8,6 +8,7 @@ import msgpack
 from aio_pika import ExchangeType
 from starlette_context.header_keys import HeaderKeys
 from starlette_context import context
+from consumers.registration_consumer.logger import correlation_id_ctx
 
 from config.settings import settings
 from consumers.registration_consumer.schema.registration_data import RegistrationData
@@ -53,7 +54,6 @@ async def start_registration(message: Message, state: FSMContext):
             aio_pika.Message(
                 msgpack.packb(registration_data),
                 # correlation_id=correlation_id_ctx.get()
-                # correlation_id=context.get(HeaderKeys.correlation_id)
             ),
             settings.REGISTRATION_QUEUE_NAME
         )
@@ -155,7 +155,7 @@ async def enter_room_number(message: Message, state: FSMContext):
         return
     await state.update_data(room_number=room_number)
     data = await state.get_data()
-    await message.answer(msg.PUSH_INTO_REGISTRATION_QUERY, reply_markup=ReplyKeyboardRemove())
+    await message.answer('', reply_markup=ReplyKeyboardRemove())
     await state.clear()
 
     registration_data = RegistrationData(
@@ -176,7 +176,6 @@ async def enter_room_number(message: Message, state: FSMContext):
             aio_pika.Message(
                 msgpack.packb(registration_data),
                 # correlation_id=correlation_id_ctx.get()
-                # # correlation_id=context.get(HeaderKeys.correlation_id)
             ),
             settings.REGISTRATION_QUEUE_NAME
         )

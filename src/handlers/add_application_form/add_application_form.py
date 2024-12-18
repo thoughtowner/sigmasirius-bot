@@ -9,6 +9,8 @@ from aio_pika import ExchangeType
 from starlette_context.header_keys import HeaderKeys
 from starlette_context import context
 
+from consumers.add_application_form_consumer.logger import correlation_id_ctx
+
 from config.settings import settings
 from consumers.add_application_form_consumer.schema.application_form_data import ApplicationFormData
 from src.states.add_application_form import AddApplicationForm
@@ -82,7 +84,6 @@ async def upload_photo(message: Message, state: FSMContext):
                 aio_pika.Message(
                     msgpack.packb(application_form_data),
                     # correlation_id=correlation_id_ctx.get()
-                    # # correlation_id=context.get(HeaderKeys.correlation_id)
                 ),
                 settings.ADD_APPLICATION_FORM_QUEUE_NAME
             )

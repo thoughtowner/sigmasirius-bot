@@ -9,9 +9,10 @@ from aio_pika import ExchangeType
 from starlette_context.header_keys import HeaderKeys
 from starlette_context import context
 
+from consumers.start_consumer.logger import correlation_id_ctx
+
 from config.settings import settings
 from consumers.start_consumer.schema.start_data import StartData
-from src.states.start import Start
 from .router import router
 from src.messages import start as msg
 from src.commands import START
@@ -43,16 +44,6 @@ async def start(message: Message, state: FSMContext):
             aio_pika.Message(
                 msgpack.packb(start_data),
                 # correlation_id=correlation_id_ctx.get()
-                # correlation_id=context.get(HeaderKeys.correlation_id)
             ),
             settings.START_QUEUE_NAME
         )
-
-    # Получаем ответное сообщение из консюмера не используя очередь пользователя TODO
-
-    await state.set_state(Start.info)
-    await message.answer(msg.INFO)
-    await message.answer('/registration')
-    await message.answer('/add_application_form')
-    await message.answer('/listening_application_forms')
-    await state.clear()

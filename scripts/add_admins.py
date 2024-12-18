@@ -1,5 +1,4 @@
-from sqlalchemy.future import select
-from sqlalchemy import insert
+from sqlalchemy import select, insert
 
 from src.model.models import User, Role, UserRole
 

@@ -17,6 +17,14 @@ from consumers.model.models import User, Role, ResidentAdditionalData, UserRole
 from sqlalchemy.future import select
 from sqlalchemy import insert
 
+from aiogram import Bot
+from aiogram.client.default import DefaultBotProperties
+from aiogram.enums import ParseMode
+from src.templates.env import render
+
+
+default = DefaultBotProperties(parse_mode=ParseMode.HTML)
+bot = Bot(token=settings.BOT_TOKEN, default=default)
 
 async def main() -> None:
     logging.config.dictConfig(LOGGING_CONFIG)
@@ -46,7 +54,12 @@ async def main() -> None:
                             await db.execute(user_query)
                             await db.commit()
 
-                            # Отправить ответное сообщение из консюмера напрямую в бота TODO
+                            await bot.send_message(
+                                text=render('start/start.jinja2'),
+                                chat_id=user_instance.telegram_user_id
+                            )
                     except IntegrityError:
-                        pass
-                        # Отправить ответное сообщение из консюмера напрямую в бота TODO
+                        await bot.send_message(
+                            text=render('start/start.jinja2'),
+                            chat_id=user_instance.telegram_user_id
+                        )

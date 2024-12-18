@@ -86,7 +86,6 @@ async def main() -> None:
                             application_form_for_admins = application_form_for_admins_result.fetchone()
 
                             parsed_application_form_for_admins = ApplicationFormForAdminsData(
-                                telegram_user_id=application_form_for_admins[0],
                                 resident_full_name=application_form_for_admins[1],
                                 resident_phone_number=application_form_for_admins[2],
                                 resident_room=application_form_for_admins[3],
@@ -107,18 +106,18 @@ async def main() -> None:
                             admin_ids = admin_ids_query.scalars().all()
 
                             for admin_id in admin_ids:
-                                # await bot.send_message(
-                                #     text=render('application_form_for_admins/application_form_for_admins.jinja2',
-                                #                 application_form_for_admins=parsed_application_form_for_admins),
-                                #     chat_id=admin_id
-                                # )
-
-                                await bot.send_photo(
-                                    photo=msgpack.unpackb(parsed_application_form_for_admins['photo']),
-                                    caption=render('application_form_for_admins/application_form_for_admins.jinja2',
-                                                   application_form_for_admins=parsed_application_form_for_admins),
+                                await bot.send_message(
+                                    text=render('application_form_for_admins/application_form_for_admins.jinja2',
+                                                application_form_for_admins=parsed_application_form_for_admins),
                                     chat_id=admin_id
                                 )
+
+                                # await bot.send_photo(
+                                #     photo=msgpack.unpackb(parsed_application_form_for_admins['photo']),
+                                #     caption=render('application_form_for_admins/application_form_for_admins.jinja2',
+                                #                    application_form_for_admins=parsed_application_form_for_admins),
+                                #     chat_id=admin_id
+                                # )
                     except IntegrityError:
                         await bot.send_message(
                             text='При отправке заявки что-то пошло не так!',

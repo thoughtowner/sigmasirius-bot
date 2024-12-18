@@ -31,3 +31,14 @@ services:
     image: redis:6.2.4
     ports:
       - "6379:6379"
+
+  minio:
+    hostname: ${MINIO_HOST}
+    image: quay.io/minio/minio:RELEASE.2024-11-07T00-52-20Z
+    command: server /data --console-address ":9001"
+    container_name: acquaintance-minio
+    volumes:
+      - /minio/data:/minio_data
+    environment:
+      MINIO_ROOT_USER: "${MINIO_USER}"
+      MINIO_ROOT_PASSWORD: "${MINIO_PASSWORD}"
