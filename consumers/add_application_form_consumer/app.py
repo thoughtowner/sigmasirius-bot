@@ -23,6 +23,15 @@ from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from src.templates.env import render
 
+import io
+from src.files_storage.storage_client import images_storage
+
+from aiogram.types.input_file import BufferedInputFile
+
+import base64
+
+from aiogram.types import Message, InputFile, BufferedInputFile, InlineKeyboardButton, InlineKeyboardMarkup
+
 
 default = DefaultBotProperties(parse_mode=ParseMode.HTML)
 bot = Bot(token=settings.BOT_TOKEN, default=default)
@@ -50,13 +59,14 @@ async def main() -> None:
 
                     try:
                         async with async_session() as db:
+                            images_storage.upload_file(str(application_form_instance.id), io.BytesIO(base64.b64decode(application_form_data['photo'])))
+
                             user_result = await db.execute(select(User.id).filter(User.telegram_user_id == user_instance.telegram_user_id))
                             user_id = user_result.scalar()
 
                             application_form_query = insert(ApplicationForm).values(
                                 title=application_form_instance.title,
                                 description=application_form_instance.description,
-                                photo=application_form_instance.photo,
                                 status_id=application_form_instance.status_id,
                                 user_id=user_id
                             ).returning(ApplicationForm.id)
@@ -73,7 +83,6 @@ async def main() -> None:
                                     ResidentAdditionalData.room,
                                     ApplicationForm.title,
                                     ApplicationForm.description,
-                                    ApplicationForm.photo,
                                     ApplicationFormStatus.title
                                 )
                                 .join(ResidentAdditionalData, ResidentAdditionalData.user_id == User.id)
@@ -86,13 +95,13 @@ async def main() -> None:
                             application_form_for_admins = application_form_for_admins_result.fetchone()
 
                             parsed_application_form_for_admins = ApplicationFormForAdminsData(
+                                telegram_user_id=application_form_for_admins[0],
                                 resident_full_name=application_form_for_admins[1],
                                 resident_phone_number=application_form_for_admins[2],
                                 resident_room=application_form_for_admins[3],
                                 title=application_form_for_admins[4],
                                 description=application_form_for_admins[5],
-                                photo=application_form_for_admins[6],
-                                status=application_form_for_admins[7]
+                                status=application_form_for_admins[6]
                             )
 
                             admin_role_id_result = await db.execute(
@@ -100,26 +109,35 @@ async def main() -> None:
                             )
                             admin_role_id = admin_role_id_result.scalar()
 
-                            admin_ids_query = await db.execute(
-                                select(UserRole.user_id).filter(UserRole.role_id == admin_role_id)
+                            admins_telegram_user_id_query = await db.execute(
+                                select(User.telegram_user_id)
+                                .join(UserRole, UserRole.user_id == User.id)
+                                .filter(UserRole.role_id == admin_role_id)
                             )
-                            admin_ids = admin_ids_query.scalars().all()
+                            admins_telegram_user_id = admins_telegram_user_id_query.scalars().all()
 
-                            for admin_id in admin_ids:
-                                await bot.send_message(
-                                    text=render('application_form_for_admins/application_form_for_admins.jinja2',
-                                                application_form_for_admins=parsed_application_form_for_admins),
-                                    chat_id=admin_id
+                            for admin_telegram_user_id in admins_telegram_user_id:
+                                # image_bytes = images_storage.get_file(str(application_form_instance.id))
+                                # image_file = InputFile(io.BytesIO(image_bytes), filename="image.jpg")
+
+                                image_input_file = BufferedInputFile(base64.b64decode(application_form_data['photo']), str(application_form_instance.id))
+
+                                take_for_processing_btn = InlineKeyboardButton(text='Взять в обработку', callback_data='take_for_processing')
+                                cancel_btn = InlineKeyboardButton(text='Отменить', callback_data='cancel')
+                                markup = InlineKeyboardMarkup(
+                                    inline_keyboard=[[take_for_processing_btn], [cancel_btn]]
                                 )
 
-                                # await bot.send_photo(
-                                #     photo=msgpack.unpackb(parsed_application_form_for_admins['photo']),
-                                #     caption=render('application_form_for_admins/application_form_for_admins.jinja2',
-                                #                    application_form_for_admins=parsed_application_form_for_admins),
-                                #     chat_id=admin_id
-                                # )
+                                await bot.send_photo(
+                                    photo=image_input_file,
+                                    caption=render('application_form_for_admins/application_form_for_admins.jinja2',
+                                                   application_form_for_admins=parsed_application_form_for_admins),
+                                    reply_markup=markup,
+                                    chat_id=admin_telegram_user_id
+                                )
+
                     except IntegrityError:
                         await bot.send_message(
                             text='При отправке заявки что-то пошло не так!',
-                            chat_id=admin_id
+                            chat_id=admin_telegram_user_id
                         )

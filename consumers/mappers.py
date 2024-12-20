@@ -51,7 +51,6 @@ async def from_application_form_data_to_application_form(application_form_data: 
     return ApplicationForm(
         title=application_form_data['title'],
         description=application_form_data['description'],
-        photo=application_form_data['photo'],
         status_id=status_id,
         user_id=user_id
     )

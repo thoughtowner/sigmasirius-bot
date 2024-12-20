@@ -93,7 +93,6 @@ class ApplicationForm(Base):
 
     title: Mapped[str] = mapped_column(Text)
     description: Mapped[str] = mapped_column(Text)
-    photo: Mapped[str] = mapped_column(Text)
 
     status_id: Mapped[UUID] = mapped_column(ForeignKey('application_form_status.id'))
     status: Mapped['ApplicationFormStatus'] = relationship(back_populates='application_form')

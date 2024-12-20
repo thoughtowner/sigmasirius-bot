@@ -25,6 +25,10 @@ import logging.config
 from aio_pika.exceptions import QueueEmpty
 import asyncio
 
+from src.bot import get_bot
+
+import base64
+
 
 logging.config.dictConfig(LOGGING_CONFIG)
 
@@ -60,34 +64,50 @@ async def enter_description(message: Message, state: FSMContext):
 
 @router.message(AddApplicationForm.photo)
 async def upload_photo(message: Message, state: FSMContext):
-    if message.photo:
-        await state.update_data(photo=message.photo[-1].file_id)
-        data = await state.get_data()
-        await message.answer(msg.PUSH_INTO_REGISTRATION_QUERY)
-        await state.clear()
+    downloaded_photo = await get_bot().download(file=message.photo[-1].file_id)
+    photo_base64 = base64.b64encode(downloaded_photo.read()).decode('utf-8')
+    await state.update_data(photo=photo_base64)
 
-        application_form_data = ApplicationFormData(
-            telegram_user_id=data['telegram_user_id'],
-            title=data['title'],
-            description=data['description'],
-            photo=data['photo'],
-            status='not_completed'
+    # await state.update_data(photo=message.photo[-1].file_id)
+
+    data = await state.get_data()
+    await message.answer(msg.PUSH_INTO_REGISTRATION_QUERY)
+    await state.clear()
+
+    application_form_data = ApplicationFormData(
+        telegram_user_id=data['telegram_user_id'],
+        title=data['title'],
+        description=data['description'],
+        photo=data['photo'],
+        status='not_completed'
+    )
+
+    async with channel_pool.acquire() as channel:  # type: aio_pika.Channel
+        logger.info('Send data to add_application_form queue...')
+        add_application_form_exchange = await channel.declare_exchange(settings.ADD_APPLICATION_FORM_EXCHANGE_NAME, ExchangeType.DIRECT, durable=True)
+        add_application_form_queue = await channel.declare_queue(settings.ADD_APPLICATION_FORM_QUEUE_NAME, durable=True)
+        await add_application_form_queue.bind(add_application_form_exchange, settings.ADD_APPLICATION_FORM_QUEUE_NAME)
+
+        await add_application_form_exchange.publish(
+            aio_pika.Message(
+                msgpack.packb(application_form_data),
+                # correlation_id=correlation_id_ctx.get()
+            ),
+            settings.ADD_APPLICATION_FORM_QUEUE_NAME
         )
 
-        async with channel_pool.acquire() as channel:  # type: aio_pika.Channel
-            logger.info('Send data to add_application_form queue...')
-            add_application_form_exchange = await channel.declare_exchange(settings.ADD_APPLICATION_FORM_EXCHANGE_NAME, ExchangeType.DIRECT, durable=True)
-            add_application_form_queue = await channel.declare_queue(settings.ADD_APPLICATION_FORM_QUEUE_NAME, durable=True)
-            await add_application_form_queue.bind(add_application_form_exchange, settings.ADD_APPLICATION_FORM_QUEUE_NAME)
+    async with channel_pool.acquire() as channel:  # type: aio_pika.Channel
+        user_add_application_form_queue = await channel.declare_queue(
+            settings.USER_ADD_APPLICATION_FORM_QUEUE_NAME.format(telegram_user_id=message.from_user.id),
+            durable=True,
+        )
 
-            await add_application_form_exchange.publish(
-                aio_pika.Message(
-                    msgpack.packb(application_form_data),
-                    # correlation_id=correlation_id_ctx.get()
-                ),
-                settings.ADD_APPLICATION_FORM_QUEUE_NAME
-            )
+        retries = 3
+        for _ in range(retries):
+            try:
+                packed_add_application_form_response_message = await user_add_application_form_queue.get(no_ack=True)
+                add_application_form_response_message = msgpack.unpackb(packed_add_application_form_response_message.body)
 
-        # Получаем ответное сообщение из консюмера не используя очередь пользователя TODO
-
-        await message.answer('Заявка отправлена')
+                return
+            except QueueEmpty:
+                await asyncio.sleep(1)

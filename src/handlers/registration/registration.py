@@ -155,7 +155,7 @@ async def enter_room_number(message: Message, state: FSMContext):
         return
     await state.update_data(room_number=room_number)
     data = await state.get_data()
-    await message.answer('', reply_markup=ReplyKeyboardRemove())
+    await message.answer(msg.PUSH_DATA_TO_REGISTRATION_QUERY, reply_markup=ReplyKeyboardRemove())
     await state.clear()
 
     registration_data = RegistrationData(
@@ -189,10 +189,10 @@ async def enter_room_number(message: Message, state: FSMContext):
         retries = 3
         for _ in range(retries):
             try:
-                registration_response_message = await user_registration_queue.get(no_ack=True)
-                registration_flag = msgpack.unpackb(registration_response_message.body)
+                packed_registration_response_message = await user_registration_queue.get(no_ack=True)
+                registration_response_message = msgpack.unpackb(packed_registration_response_message.body)
 
-                answer = msg.SUCCESS_REGISTER if registration_flag else msg.ALREADY_REGISTER
+                answer = msg.SUCCESS_REGISTER if registration_response_message else msg.ALREADY_REGISTER
                 await message.answer(answer)
                 return
             except QueueEmpty:

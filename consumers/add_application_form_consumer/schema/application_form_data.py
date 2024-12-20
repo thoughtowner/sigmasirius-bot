@@ -5,5 +5,5 @@ class ApplicationFormData(TypedDict):
     telegram_user_id: int
     title: str
     description: str
-    photo: str
+    photo: bytes
     status: str
