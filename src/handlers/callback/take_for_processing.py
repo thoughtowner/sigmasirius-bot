@@ -17,23 +17,12 @@ from aiogram.enums import ParseMode
 from src.templates.env import render
 
 
-# async def listen(callback_query: CallbackQuery, user_id: str):
-#     async with channel_pool.acquire() as channel:  # type: aio_pika.Channel
-#         queue: Queue = await channel.declare_queue(settings.USER_GIFT_QUEUE_TEMPLATE.format(user_id=user_id), durable=True)
-#         message = await queue.get()
-#         parsed_message: Gift = msgpack.unpackb(message)
-#         await callback_query.answer(parsed_message)
-
 default = DefaultBotProperties(parse_mode=ParseMode.HTML)
 bot = Bot(token=settings.BOT_TOKEN, default=default)
 
-@router.callback_query()
+@router.callback_query(lambda callback_query: callback_query.data == 'take_for_processing')
 async def take_for_processing(callback_query: CallbackQuery, state: FSMContext) -> None:
     telegram_user_id = callback_query.from_user.id
-
-    # user_data_per_callback = user_data[callback_query.data]
-
-    # await callback_query.message.delete_reply_markup()
 
     async with channel_pool.acquire() as channel:  # type: aio_pika.Channel
         application_form_for_admins_queue = await channel.declare_queue('application_form_for_admins_queue', durable=True)
@@ -44,19 +33,13 @@ async def take_for_processing(callback_query: CallbackQuery, state: FSMContext) 
                 packed_application_form_for_admins_response_message = await application_form_for_admins_queue.get(no_ack=True)
                 application_form_for_admins_response_message = msgpack.unpackb(packed_application_form_for_admins_response_message.body)
 
-                # async with aiohttp.ClientSession() as session:
-                #     async with session.get('https://cdn.velostrana.ru/upload/models/velo/63352/full.jpg') as response:
-                #         content = await response.read()
-                #
-                # photo = BufferedInputFile(content, 'test')
-                # # callback buttons
-
-                application_form_for_admins_data = application_form_for_admins_response_message['application_form_for_admins_data']
+                application_form_for_admins_data = application_form_for_admins_response_message['application_form_for_user_data']['admins']
+                application_form_for_owner_data = application_form_for_admins_response_message['application_form_for_user_data']['owner']
                 caption = application_form_for_admins_response_message['caption']
+                caption['status'] = 'in_processing'
+
                 for application_form_for_admin_data in application_form_for_admins_data:
                     if application_form_for_admin_data['chat_id'] == telegram_user_id:
-                        caption['status'] = 'in_processing'
-
                         await bot.edit_message_caption(
                             caption=render(
                                 'application_form_for_admins/application_form_for_admins.jinja2',
@@ -76,19 +59,31 @@ async def take_for_processing(callback_query: CallbackQuery, state: FSMContext) 
                             message_id=application_form_for_admin_data['message_id'],
                             reply_markup=markup
                         )
+
+                        application_forms_data = await state.get_data()
+                        application_forms_data[caption['application_form_id']] = {
+                            'admin_data': {
+                                'chat_id': application_form_for_admin_data['chat_id'],
+                                'message_id': application_form_for_admin_data['message_id']
+                            },
+                            'owner_data': {
+                                'chat_id': application_form_for_owner_data['chat_id'],
+                                'message_id': application_form_for_owner_data['message_id']
+                            },
+                            'caption': caption
+                        }
+                        await state.update_data(application_forms_data=application_forms_data)
                     else:
                         await bot.delete_message(chat_id=application_form_for_admin_data['chat_id'], message_id=application_form_for_admin_data['message_id'])
 
-                # inline_btn_1 = InlineKeyboardButton(text='Следующий подарок', callback_data='next_gift')
-                # markup = InlineKeyboardMarkup(
-                #     inline_keyboard=[[inline_btn_1]]
-                # )
-                #
-                # await callback_query.message.answer_photo(
-                #     photo=parsed_gift['photo'],
-                #     caption=render('gift/gift.jinja2', gift=parsed_gift),
-                #     reply_markup=markup,
-                # )
+                await bot.edit_message_caption(
+                    caption=render(
+                        'application_form_for_admins/application_form_for_admins.jinja2',
+                        application_form_for_admins=caption
+                    ),
+                    chat_id=application_form_for_owner_data['chat_id'],
+                    message_id=application_form_for_owner_data['message_id']
+                )
 
                 return
             except QueueEmpty:

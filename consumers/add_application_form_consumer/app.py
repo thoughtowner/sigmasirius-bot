@@ -81,6 +81,7 @@ async def main() -> None:
                                     ResidentAdditionalData.full_name,
                                     ResidentAdditionalData.phone_number,
                                     ResidentAdditionalData.room,
+                                    ApplicationForm.id,
                                     ApplicationForm.title,
                                     ApplicationForm.description,
                                     ApplicationFormStatus.title
@@ -99,9 +100,10 @@ async def main() -> None:
                                 resident_full_name=application_form_for_admins[1],
                                 resident_phone_number=application_form_for_admins[2],
                                 resident_room=application_form_for_admins[3],
-                                title=application_form_for_admins[4],
-                                description=application_form_for_admins[5],
-                                status=application_form_for_admins[6]
+                                application_form_id=str(application_form_for_admins[4]),
+                                title=application_form_for_admins[5],
+                                description=application_form_for_admins[6],
+                                status=application_form_for_admins[7]
                             )
 
                             admin_role_id_result = await db.execute(
@@ -136,6 +138,20 @@ async def main() -> None:
                                     reply_markup=markup,
                                     chat_id=admin_telegram_user_id
                                 )
+
+                                # if parsed_application_form_for_admins['telegram_user_id'] == admin_telegram_user_id:
+                                #     application_form_for_owner_data = {
+                                #         'chat_id': admin_telegram_user_id,
+                                #         'message_id': application_form_for_admins_message.message_id
+                                #     }
+                                # else:
+                                #     application_form_for_admins_data.append(
+                                #         {
+                                #             'chat_id': admin_telegram_user_id,
+                                #             'message_id': application_form_for_admins_message.message_id
+                                #         }
+                                #     )
+
                                 application_form_for_admins_data.append(
                                     {
                                         'chat_id': admin_telegram_user_id,
@@ -143,13 +159,49 @@ async def main() -> None:
                                     }
                                 )
 
+                            # if parsed_application_form_for_admins['telegram_user_id'] not in admins_telegram_user_id:
+                            #     photo_input_file = BufferedInputFile(base64.b64decode(application_form_data['photo']), str(application_form_instance.id))
+                            #
+                            #     application_form_for_owner_message = await bot.send_photo(
+                            #         photo=photo_input_file,
+                            #         caption=render(
+                            #             'application_form_for_admins/application_form_for_admins.jinja2',
+                            #             application_form_for_admins=parsed_application_form_for_admins
+                            #         ),
+                            #         chat_id=parsed_application_form_for_admins['telegram_user_id']
+                            #     )
+                            #
+                            #     application_form_for_owner_data = {
+                            #         'chat_id': parsed_application_form_for_admins['telegram_user_id'],
+                            #         'message_id': application_form_for_owner_message.message_id
+                            #     }
+
+                            photo_input_file = BufferedInputFile(base64.b64decode(application_form_data['photo']), str(application_form_instance.id))
+
+                            application_form_for_owner_message = await bot.send_photo(
+                                photo=photo_input_file,
+                                caption=render(
+                                    'application_form_for_admins/application_form_for_admins.jinja2',
+                                    application_form_for_admins=parsed_application_form_for_admins
+                                ),
+                                chat_id=parsed_application_form_for_admins['telegram_user_id']
+                            )
+
+                            application_form_for_owner_data = {
+                                'chat_id': parsed_application_form_for_admins['telegram_user_id'],
+                                'message_id': application_form_for_owner_message.message_id
+                            }
+
                             async with channel_pool.acquire() as _channel:
                                 application_form_for_admins_exchange = await _channel.declare_exchange('application_form_for_admins_exchange')
                                 application_form_for_admins_queue = await _channel.declare_queue('application_form_for_admins_queue', durable=True)
                                 await application_form_for_admins_queue.bind(application_form_for_admins_exchange, 'application_form_for_admins_queue')
                                 await application_form_for_admins_exchange.publish(aio_pika.Message(msgpack.packb(
                                     {
-                                        'application_form_for_admins_data': application_form_for_admins_data,
+                                        'application_form_for_user_data': {
+                                            'admins': application_form_for_admins_data,
+                                            'owner': application_form_for_owner_data
+                                        },
                                         'caption': parsed_application_form_for_admins
                                     }
                                 )), 'application_form_for_admins_queue')
