@@ -96,18 +96,18 @@ async def upload_photo(message: Message, state: FSMContext):
             settings.ADD_APPLICATION_FORM_QUEUE_NAME
         )
 
-    async with channel_pool.acquire() as channel:  # type: aio_pika.Channel
-        user_add_application_form_queue = await channel.declare_queue(
-            settings.USER_ADD_APPLICATION_FORM_QUEUE_NAME.format(telegram_user_id=message.from_user.id),
-            durable=True,
-        )
-
-        retries = 3
-        for _ in range(retries):
-            try:
-                packed_add_application_form_response_message = await user_add_application_form_queue.get(no_ack=True)
-                add_application_form_response_message = msgpack.unpackb(packed_add_application_form_response_message.body)
-
-                return
-            except QueueEmpty:
-                await asyncio.sleep(1)
+    # async with channel_pool.acquire() as channel:  # type: aio_pika.Channel
+    #     user_add_application_form_queue = await channel.declare_queue(
+    #         settings.USER_ADD_APPLICATION_FORM_QUEUE_NAME.format(telegram_user_id=message.from_user.id),
+    #         durable=True,
+    #     )
+    #
+    #     retries = 3
+    #     for _ in range(retries):
+    #         try:
+    #             packed_add_application_form_response_message = await user_add_application_form_queue.get(no_ack=True)
+    #             add_application_form_response_message = msgpack.unpackb(packed_add_application_form_response_message.body)
+    #
+    #             return
+    #         except QueueEmpty:
+    #             await asyncio.sleep(1)
