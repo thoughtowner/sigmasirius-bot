@@ -89,4 +89,4 @@ async def take_for_processing(callback_query: CallbackQuery, state: FSMContext) 
             except QueueEmpty:
                 await asyncio.sleep(1)
 
-        await callback_query.message.answer('Нет подарков')
+        await callback_query.message.answer('Что-то пошло не так')

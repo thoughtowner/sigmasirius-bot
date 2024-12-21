@@ -1,1 +1,1 @@
-from . import take_for_processing, complete
+from . import take_for_processing, complete, cancel
