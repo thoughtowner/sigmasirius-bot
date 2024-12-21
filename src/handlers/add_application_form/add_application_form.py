@@ -27,7 +27,10 @@ import asyncio
 
 from src.bot import get_bot
 
-import base64
+from src.files_storage.storage_client import images_storage
+import io
+
+from uuid import uuid4
 
 
 logging.config.dictConfig(LOGGING_CONFIG)
@@ -64,21 +67,28 @@ async def enter_description(message: Message, state: FSMContext):
 
 @router.message(AddApplicationForm.photo)
 async def upload_photo(message: Message, state: FSMContext):
-    downloaded_photo = await get_bot().download(file=message.photo[-1].file_id)
-    photo_base64 = base64.b64encode(downloaded_photo.read()).decode('utf-8')
-    await state.update_data(photo=photo_base64)
+    downloaded_photo_bytes_io = await get_bot().download(file=message.photo[-1].file_id)
+    # photo_base64 = base64.b64encode(downloaded_photo.read()).decode('utf-8')
+    # await state.update_data(photo=photo_base64)
 
     # await state.update_data(photo=message.photo[-1].file_id)
 
+    downloaded_photo_bytes_io.seek(0)
+
+    photo_title = str(uuid4())
+    images_storage.upload_file(photo_title, downloaded_photo_bytes_io)
+
+    await state.update_data(photo_title=photo_title)
+
     data = await state.get_data()
-    await message.answer(msg.PUSH_INTO_REGISTRATION_QUERY)
+    await message.answer(msg.PUSH_DATA_TO_ADD_APPLICATION_FORM_QUERY)
     await state.clear()
 
     application_form_data = ApplicationFormData(
         telegram_user_id=data['telegram_user_id'],
         title=data['title'],
         description=data['description'],
-        photo=data['photo'],
+        photo_title=data['photo_title'],
         status='not_completed'
     )
 
