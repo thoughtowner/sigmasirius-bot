@@ -11,7 +11,8 @@ async def add_application_form_statuses(db: AsyncSession):
     new_application_form_statuses = [
         ApplicationFormStatus(title='not_completed'),
         ApplicationFormStatus(title='in_processing'),
-        ApplicationFormStatus(title='completed')
+        ApplicationFormStatus(title='completed'),
+        ApplicationFormStatus(title='cancelled')
     ]
     db.add_all(new_application_form_statuses)
     await db.commit()

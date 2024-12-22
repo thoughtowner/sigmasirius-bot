@@ -20,6 +20,12 @@ from src.files_storage.storage_client import images_storage
 
 from aiogram.types import Message, InputFile, BufferedInputFile, InlineKeyboardButton, InlineKeyboardMarkup
 
+import aio_pika
+import msgpack
+
+from ..logger import LOGGING_CONFIG, logger, correlation_id_ctx
+from ..storage.rabbit import channel_pool
+
 
 default = DefaultBotProperties(parse_mode=ParseMode.HTML)
 bot = Bot(token=settings.BOT_TOKEN, default=default)
@@ -31,8 +37,6 @@ async def handle_application_form_event(message): # TODO async def handle_applic
 
         try:
             async with async_session() as db:
-                # images_storage.upload_file(str(application_form_instance.id), io.BytesIO(base64.b64decode(message['photo'])))
-
                 user_result = await db.execute(
                     select(User.id).filter(User.telegram_user_id == user_instance.telegram_user_id))
                 user_id = user_result.scalar()
@@ -91,7 +95,7 @@ async def handle_application_form_event(message): # TODO async def handle_applic
                 )
                 admins_telegram_user_id = admins_telegram_user_id_query.scalars().all()
 
-                # application_form_for_admins_data = []
+                application_form_for_admins_data = []
                 for admin_telegram_user_id in admins_telegram_user_id:
                     photo_input_file = BufferedInputFile(images_storage.get_file(message['photo_title']),
                                                          message['photo_title'])
@@ -113,12 +117,12 @@ async def handle_application_form_event(message): # TODO async def handle_applic
                         chat_id=admin_telegram_user_id
                     )
 
-                    # application_form_for_admins_data.append(
-                    #     {
-                    #         'chat_id': admin_telegram_user_id,
-                    #         'message_id': application_form_for_admins_message.message_id
-                    #     }
-                    # )
+                    application_form_for_admins_data.append(
+                        {
+                            'chat_id': admin_telegram_user_id,
+                            'message_id': application_form_for_admins_message.message_id
+                        }
+                    )
 
                 photo_input_file = BufferedInputFile(images_storage.get_file(message['photo_title']),
                                                      message['photo_title'])
@@ -132,24 +136,24 @@ async def handle_application_form_event(message): # TODO async def handle_applic
                     chat_id=parsed_application_form_for_admins['telegram_user_id']
                 )
 
-                # application_form_for_owner_data = {
-                #     'chat_id': parsed_application_form_for_admins['telegram_user_id'],
-                #     'message_id': application_form_for_owner_message.message_id
-                # }
-                #
-                # async with channel_pool.acquire() as _channel:
-                #     application_form_for_admins_exchange = await _channel.declare_exchange('application_form_for_admins_exchange')
-                #     application_form_for_admins_queue = await _channel.declare_queue('application_form_for_admins_queue', durable=True)
-                #     await application_form_for_admins_queue.bind(application_form_for_admins_exchange, 'application_form_for_admins_queue')
-                #     await application_form_for_admins_exchange.publish(aio_pika.Message(msgpack.packb(
-                #         {
-                #             'application_form_for_user_data': {
-                #                 'admins': application_form_for_admins_data,
-                #                 'owner': application_form_for_owner_data
-                #             },
-                #             'caption': parsed_application_form_for_admins
-                #         }
-                #     )), 'application_form_for_admins_queue')
+                application_form_for_owner_data = {
+                    'chat_id': parsed_application_form_for_admins['telegram_user_id'],
+                    'message_id': application_form_for_owner_message.message_id
+                }
+
+                async with channel_pool.acquire() as _channel:
+                    application_form_for_admins_exchange = await _channel.declare_exchange('application_form_for_admins_exchange')
+                    application_form_for_admins_queue = await _channel.declare_queue('application_form_for_admins_queue', durable=True)
+                    await application_form_for_admins_queue.bind(application_form_for_admins_exchange, 'application_form_for_admins_queue')
+                    await application_form_for_admins_exchange.publish(aio_pika.Message(msgpack.packb(
+                        {
+                            'application_form_for_user_data': {
+                                'admins': application_form_for_admins_data,
+                                'owner': application_form_for_owner_data
+                            },
+                            'application_form_id': parsed_application_form_for_admins['application_form_id']
+                        }
+                    )), 'application_form_for_admins_queue')
 
         except IntegrityError:
             await bot.send_message(

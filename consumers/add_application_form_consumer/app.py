@@ -7,7 +7,7 @@ from logger import LOGGING_CONFIG, logger, correlation_id_ctx
 from storage.rabbit import channel_pool
 
 from consumers.add_application_form_consumer.handlers.application_form import handle_application_form_event
-from consumers.add_application_form_consumer.handlers.application_form_status import handle_application_form_status_event
+from consumers.add_application_form_consumer.handlers.application_form_new_status import handle_application_form_new_status_event
 
 
 async def main() -> None:
@@ -29,7 +29,7 @@ async def main() -> None:
                     body = msgpack.unpackb(message.body)
                     logger.info("Received message %s", body)
 
-                    if body.get('event') == 'application_form':
+                    if body['event'] == 'application_form':
                         await handle_application_form_event(body)
-                    elif body.get('event') == 'application_form_status':
-                        await handle_application_form_status_event(body)
+                    elif body['event'] == 'application_form_new_status':
+                        await handle_application_form_new_status_event(body)
