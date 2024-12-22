@@ -29,21 +29,13 @@ async def take_for_processing(callback_query: CallbackQuery, state: FSMContext) 
     telegram_user_id = callback_query.from_user.id
     message_id = callback_query.message.message_id
 
-    # state_data = await state.get_data()
-    # application_form_id_message_id = state_data['application_form_id_message_id']
-    # application_form_id_message_id.append(
-    #     {
-    #         'application_form_id': '...',
-    #         'message_id': '...'
-    #     }
-    # )
-    # await state.update_data(application_form_id_message_id=application_form_id_message_id)
-
     async with channel_pool.acquire() as channel:  # type: aio_pika.Channel
         logger.info('Send data to add_application_form queue...')
 
         async with channel_pool.acquire() as _channel:  # type: aio_pika.Channel
             application_form_for_admins_queue = await _channel.declare_queue('application_form_for_admins_queue', durable=True)
+
+            unacked_messages = []
 
             retries = 3
             for _ in range(retries):
@@ -62,7 +54,8 @@ async def take_for_processing(callback_query: CallbackQuery, state: FSMContext) 
                                     is_consume_needed_message_from_queue = True
                                     break
 
-                            await packed_application_form_for_admins_response_message.nack(requeue=True)
+                            unacked_messages.append(packed_application_form_for_admins_response_message)
+                            # await packed_application_form_for_admins_response_message.nack(requeue=True)
 
                         except QueueEmpty:
                             pass
@@ -76,22 +69,31 @@ async def take_for_processing(callback_query: CallbackQuery, state: FSMContext) 
             if not is_consume_needed_message_from_queue:
                 await callback_query.message.answer('Что-то пошло не так')
 
+            for unacked_message in unacked_messages:
+                await unacked_message.nack(requeue=True)
+
             application_form_for_owner_data = application_form_for_admins_response_message['application_form_for_user_data']['owner']
             application_form_id = application_form_for_admins_response_message['application_form_id']
 
         application_forms_data = await state.get_data()
-        application_forms_data['application_form'] = {
-            'clicked_admin_data': {
-                'chat_id': application_form_for_admin_data['chat_id'],
-                'message_id': application_form_for_admin_data['message_id']
-            },
-            'owner_data': {
-                'chat_id': application_form_for_owner_data['chat_id'],
-                'message_id': application_form_for_owner_data['message_id']
-            },
-            'application_form_id': application_form_id
-        }
-        await state.update_data(application_forms_data=application_forms_data)
+        if not 'application_form' in application_forms_data:
+            application_forms_data['application_form'] = []
+        application_forms_data['application_form'].append(
+            {
+                'clicked_admin_data': {
+                    'chat_id': application_form_for_admin_data['chat_id'],
+                    'message_id': application_form_for_admin_data['message_id']
+                },
+                'owner_data': {
+                    'chat_id': application_form_for_owner_data['chat_id'],
+                    'message_id': application_form_for_owner_data['message_id']
+                },
+                'application_form_id': application_form_id
+            }
+        )
+        await state.update_data(application_form=application_forms_data['application_form'])
+
+        print(state.get_data())
 
         add_application_form_exchange = await channel.declare_exchange(settings.ADD_APPLICATION_FORM_EXCHANGE_NAME, ExchangeType.DIRECT, durable=True)
         add_application_form_queue = await channel.declare_queue(settings.ADD_APPLICATION_FORM_QUEUE_NAME, durable=True)
@@ -116,70 +118,3 @@ async def take_for_processing(callback_query: CallbackQuery, state: FSMContext) 
             ),
             settings.ADD_APPLICATION_FORM_QUEUE_NAME
         )
-
-    # async with channel_pool.acquire() as channel:  # type: aio_pika.Channel
-    #     application_form_for_admins_queue = await channel.declare_queue('application_form_for_admins_queue', durable=True)
-    #
-    #     retries = 3
-    #     for _ in range(retries):
-    #         try:
-    #             packed_application_form_for_admins_response_message = await application_form_for_admins_queue.get(no_ack=True)
-    #             application_form_for_admins_response_message = msgpack.unpackb(packed_application_form_for_admins_response_message.body)
-    #
-    #             application_form_for_admins_data = application_form_for_admins_response_message['application_form_for_user_data']['admins']
-    #             application_form_for_owner_data = application_form_for_admins_response_message['application_form_for_user_data']['owner']
-    #             caption = application_form_for_admins_response_message['caption']
-    #             caption['status'] = 'in_processing'
-    #
-    #             for application_form_for_admin_data in application_form_for_admins_data:
-    #                 if application_form_for_admin_data['chat_id'] == telegram_user_id:
-    #                     await bot.edit_message_caption(
-    #                         caption=render(
-    #                             'application_form_for_admins/application_form_for_admins.jinja2',
-    #                             application_form_for_admins=caption
-    #                         ),
-    #                         chat_id=application_form_for_admin_data['chat_id'],
-    #                         message_id=application_form_for_admin_data['message_id']
-    #                     )
-    #
-    #                     complete_btn = InlineKeyboardButton(text='Выполнить', callback_data='complete')
-    #                     markup = InlineKeyboardMarkup(
-    #                         inline_keyboard=[[complete_btn]]
-    #                     )
-    #
-    #                     await bot.edit_message_reply_markup(
-    #                         chat_id=application_form_for_admin_data['chat_id'],
-    #                         message_id=application_form_for_admin_data['message_id'],
-    #                         reply_markup=markup
-    #                     )
-    #
-    #                     application_forms_data = await state.get_data()
-    #                     application_forms_data[caption['application_form_id']] = {
-    #                         'admin_data': {
-    #                             'chat_id': application_form_for_admin_data['chat_id'],
-    #                             'message_id': application_form_for_admin_data['message_id']
-    #                         },
-    #                         'owner_data': {
-    #                             'chat_id': application_form_for_owner_data['chat_id'],
-    #                             'message_id': application_form_for_owner_data['message_id']
-    #                         },
-    #                         'caption': caption
-    #                     }
-    #                     await state.update_data(application_forms_data=application_forms_data)
-    #                 else:
-    #                     await bot.delete_message(chat_id=application_form_for_admin_data['chat_id'], message_id=application_form_for_admin_data['message_id'])
-    #
-    #             await bot.edit_message_caption(
-    #                 caption=render(
-    #                     'application_form_for_admins/application_form_for_admins.jinja2',
-    #                     application_form_for_admins=caption
-    #                 ),
-    #                 chat_id=application_form_for_owner_data['chat_id'],
-    #                 message_id=application_form_for_owner_data['message_id']
-    #             )
-    #
-    #             return
-    #         except QueueEmpty:
-    #             await asyncio.sleep(1)
-    #
-    #     await callback_query.message.answer('Что-то пошло не так')

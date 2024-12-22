@@ -37,6 +37,7 @@ async def cancel(callback_query: CallbackQuery, state: FSMContext) -> None:
         async with channel_pool.acquire() as _channel:  # type: aio_pika.Channel
             application_form_for_admins_queue = await _channel.declare_queue('application_form_for_admins_queue',
                                                                              durable=True)
+            unacked_messages = []
 
             retries = 3
             for _ in range(retries):
@@ -55,6 +56,9 @@ async def cancel(callback_query: CallbackQuery, state: FSMContext) -> None:
                                     is_consume_needed_message_from_queue = True
                                     break
 
+                            if not is_consume_needed_message_from_queue:
+                                unacked_messages.append(packed_application_form_for_admins_response_message)
+
                         except QueueEmpty:
                             pass
 
@@ -66,6 +70,9 @@ async def cancel(callback_query: CallbackQuery, state: FSMContext) -> None:
 
             if not is_consume_needed_message_from_queue:
                 await callback_query.message.answer('Что-то пошло не так')
+
+            for unacked_message in unacked_messages:
+                await unacked_message.nack(requeue=True)
 
             application_form_for_owner_data = application_form_for_admins_response_message['application_form_for_user_data']['owner']
             application_form_id = application_form_for_admins_response_message['application_form_id']
@@ -93,54 +100,3 @@ async def cancel(callback_query: CallbackQuery, state: FSMContext) -> None:
             ),
             settings.ADD_APPLICATION_FORM_QUEUE_NAME
         )
-
-    # async with channel_pool.acquire() as channel:  # type: aio_pika.Channel
-    #     application_form_for_admins_queue = await channel.declare_queue('application_form_for_admins_queue', durable=True)
-    #
-    #     retries = 3
-    #     for _ in range(retries):
-    #         try:
-    #             packed_application_form_for_admins_response_message = await application_form_for_admins_queue.get(no_ack=True)
-    #             application_form_for_admins_response_message = msgpack.unpackb(packed_application_form_for_admins_response_message.body)
-    #
-    #             application_form_for_admins_data = application_form_for_admins_response_message['application_form_for_user_data']['admins']
-    #             application_form_for_owner_data = application_form_for_admins_response_message['application_form_for_user_data']['owner']
-    #             caption = application_form_for_admins_response_message['caption']
-    #             caption['status'] = 'cancelled'
-    #
-    #             for application_form_for_admin_data in application_form_for_admins_data:
-    #                 await bot.delete_message(chat_id=application_form_for_admin_data['chat_id'], message_id=application_form_for_admin_data['message_id'])
-    #
-    #             await bot.edit_message_caption(
-    #                 caption=render(
-    #                     'application_form_for_admins/application_form_for_admins.jinja2',
-    #                     application_form_for_admins=caption
-    #                 ),
-    #                 chat_id=application_form_for_owner_data['chat_id'],
-    #                 message_id=application_form_for_owner_data['message_id']
-    #             )
-    #
-    #             async with channel_pool.acquire() as _channel:  # type: aio_pika.Channel
-    #                 # logger.info('Send data to registration queue...')
-    #                 change_application_form_status_exchange = await channel.declare_exchange('change_application_form_status_exchange', ExchangeType.DIRECT, durable=True)
-    #                 change_application_form_status_queue = await channel.declare_queue('change_application_form_status_queue', durable=True)
-    #                 await change_application_form_status_queue.bind(change_application_form_status_exchange, settings.REGISTRATION_QUEUE_NAME)
-    #
-    #                 await change_application_form_status_exchange.publish(
-    #                     aio_pika.Message(
-    #                         msgpack.packb(
-    #                             {
-    #                                 'application_form_id': caption['application_form_id'],
-    #                                 'status': caption['status']
-    #                             }
-    #                         ),
-    #                         # correlation_id=correlation_id_ctx.get()
-    #                     ),
-    #                     'change_application_form_status_queue'
-    #                 )
-    #
-    #             return
-    #         except QueueEmpty:
-    #             await asyncio.sleep(1)
-    #
-    # await callback_query.message.answer('Что-то пошло не так')

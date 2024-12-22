@@ -35,6 +35,8 @@ async def complete(callback_query: CallbackQuery, state: FSMContext) -> None:
         async with channel_pool.acquire() as _channel:  # type: aio_pika.Channel
             application_form_for_admins_queue = await _channel.declare_queue('application_form_for_admins_queue', durable=True)
 
+            unacked_messages = []
+
             retries = 3
             for _ in range(retries):
                 try:
@@ -52,6 +54,9 @@ async def complete(callback_query: CallbackQuery, state: FSMContext) -> None:
                                     is_consume_needed_message_from_queue = True
                                     break
 
+                            if not is_consume_needed_message_from_queue:
+                                unacked_messages.append(packed_application_form_for_admins_response_message)
+
                         except QueueEmpty:
                             pass
 
@@ -64,22 +69,18 @@ async def complete(callback_query: CallbackQuery, state: FSMContext) -> None:
             if not is_consume_needed_message_from_queue:
                 await callback_query.message.answer('Что-то пошло не так')
 
+            for unacked_message in unacked_messages:
+                await unacked_message.nack(requeue=True)
+
             application_form_for_owner_data = application_form_for_admins_response_message['application_form_for_user_data']['owner']
             application_form_id = application_form_for_admins_response_message['application_form_id']
 
-        completed_application_form_data = None
         state_application_forms_data = await state.get_data()
-        for state_application_form_id, state_application_form_data in state_application_forms_data['application_forms_data'].items():
+        for i, state_application_form_data in enumerate(state_application_forms_data['application_form']):
             if state_application_form_data['clicked_admin_data']['chat_id'] == telegram_user_id and state_application_form_data['clicked_admin_data']['message_id'] == message_id:
-                completed_application_form_data = state_application_form_data
-                completed_application_form_id = state_application_form_id
+                del state_application_forms_data['application_form'][i]
                 break
 
-        if completed_application_form_data is None:
-            await bot.send_message(text='Что-то пошло не так', chat_id=telegram_user_id)
-            return
-
-        del state_application_forms_data['application_forms_data'][completed_application_form_id]
         await state.update_data(application_forms_data=state_application_forms_data)
 
         add_application_form_exchange = await channel.declare_exchange(settings.ADD_APPLICATION_FORM_EXCHANGE_NAME, ExchangeType.DIRECT, durable=True)
