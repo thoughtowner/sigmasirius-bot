@@ -38,6 +38,7 @@ logging.config.dictConfig(LOGGING_CONFIG)
 @router.message(F.text == ADD_APPLICATION_FORM)
 async def start_add_application_form(message: Message, state: FSMContext):
     await state.update_data(telegram_user_id=message.from_user.id)
+    await state.update_data(telegram_user_username=message.from_user.username)
     await state.set_state(AddApplicationForm.title)
     await message.answer(msg.ENTER_TITLE)
 
@@ -77,12 +78,15 @@ async def upload_photo(message: Message, state: FSMContext):
 
     data = await state.get_data()
     await message.answer(msg.PUSH_DATA_TO_ADD_APPLICATION_FORM_QUERY)
-    await state.clear()
+
+    await state.set_state('')
+    # await state.clear()
 
     application_form_data = ApplicationFormData(
         event='application_form',
         action='add_application_form',
         telegram_user_id=data['telegram_user_id'],
+        telegram_user_username=data['telegram_user_username'],
         title=data['title'],
         description=data['description'],
         photo_title=data['photo_title'],

@@ -10,12 +10,13 @@ class User(Base):
     __tablename__ = 'user'
 
     __table_args__ = (
-        UniqueConstraint('telegram_user_id', name='user_unique_telegram_user_id'),
+        UniqueConstraint('telegram_user_id', 'telegram_user_username', name='user_telegram_user_id_unique_combined_telegram_user_id'),
     )
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
 
     telegram_user_id: Mapped[int] = mapped_column(BigInteger)
+    telegram_user_username: Mapped[str] = mapped_column(String)
 
     roles: Mapped[List['UserRole']] = relationship(back_populates='user')
     resident_additional_data: Mapped['ResidentAdditionalData'] = relationship(back_populates='user')
@@ -41,7 +42,7 @@ class UserRole(Base):
     __tablename__ = 'user_role'
 
     __table_args__ = (
-        UniqueConstraint('user_id', 'role_id', name='role_role_user_id_unique_combined_role_id'),
+        UniqueConstraint('user_id', 'role_id', name='role_user_id_unique_combined_role_id'),
     )
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)

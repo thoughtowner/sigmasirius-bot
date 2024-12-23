@@ -28,10 +28,12 @@ logging.config.dictConfig(LOGGING_CONFIG)
 @router.message(F.text == START)
 async def start(message: Message, state: FSMContext):
     await state.update_data(telegram_user_id=message.from_user.id)
+    await state.update_data(telegram_user_username=message.from_user.username)
     data = await state.get_data()
 
     start_data = StartData(
-        telegram_user_id=data['telegram_user_id']
+        telegram_user_id=data['telegram_user_id'],
+        telegram_user_username=data['telegram_user_username']
     )
 
     async with channel_pool.acquire() as channel:  # type: aio_pika.Channel

@@ -16,7 +16,7 @@ from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from src.templates.env import render
 
-from ....logger import LOGGING_CONFIG, logger
+from ...logger import LOGGING_CONFIG, logger
 
 from aio_pika import ExchangeType
 
@@ -24,8 +24,8 @@ from aio_pika import ExchangeType
 default = DefaultBotProperties(parse_mode=ParseMode.HTML)
 bot = Bot(token=settings.BOT_TOKEN, default=default)
 
-@router.callback_query(lambda callback_query: callback_query.data == 'complete')
-async def complete(callback_query: CallbackQuery, state: FSMContext) -> None:
+@router.callback_query(lambda callback_query: callback_query.data == 'take_for_processing')
+async def take_for_processing(callback_query: CallbackQuery, state: FSMContext) -> None:
     telegram_user_id = callback_query.from_user.id
     message_id = callback_query.message.message_id
 
@@ -50,12 +50,12 @@ async def complete(callback_query: CallbackQuery, state: FSMContext) -> None:
 
                             for application_form_for_admin_data in application_form_for_admins_data:
                                 if application_form_for_admin_data['chat_id'] == telegram_user_id and application_form_for_admin_data['message_id'] == message_id:
-                                    await packed_application_form_for_admins_response_message.ack()
+                                    # await packed_application_form_for_admins_response_message.ack()
                                     is_consume_needed_message_from_queue = True
                                     break
 
-                            if not is_consume_needed_message_from_queue:
-                                unacked_messages.append(packed_application_form_for_admins_response_message)
+                            unacked_messages.append(packed_application_form_for_admins_response_message)
+                            # await packed_application_form_for_admins_response_message.nack(requeue=True)
 
                         except QueueEmpty:
                             pass
@@ -75,13 +75,25 @@ async def complete(callback_query: CallbackQuery, state: FSMContext) -> None:
             application_form_for_owner_data = application_form_for_admins_response_message['application_form_for_user_data']['owner']
             application_form_id = application_form_for_admins_response_message['application_form_id']
 
-        state_application_forms_data = await state.get_data()
-        for i, state_application_form_data in enumerate(state_application_forms_data['application_form']):
-            if state_application_form_data['clicked_admin_data']['chat_id'] == telegram_user_id and state_application_form_data['clicked_admin_data']['message_id'] == message_id:
-                del state_application_forms_data['application_form'][i]
-                break
+        application_forms_data = await state.get_data()
+        if not 'application_form' in application_forms_data:
+            application_forms_data['application_form'] = []
+        application_forms_data['application_form'].append(
+            {
+                'clicked_admin_data': {
+                    'chat_id': application_form_for_admin_data['chat_id'],
+                    'message_id': application_form_for_admin_data['message_id']
+                },
+                'owner_data': {
+                    'chat_id': application_form_for_owner_data['chat_id'],
+                    'message_id': application_form_for_owner_data['message_id']
+                },
+                'application_form_id': application_form_id
+            }
+        )
+        await state.update_data(application_form=application_forms_data['application_form'])
 
-        await state.update_data(application_forms_data=state_application_forms_data)
+        print(await state.get_data())
 
         add_application_form_exchange = await channel.declare_exchange(settings.ADD_APPLICATION_FORM_EXCHANGE_NAME, ExchangeType.DIRECT, durable=True)
         add_application_form_queue = await channel.declare_queue(settings.ADD_APPLICATION_FORM_QUEUE_NAME, durable=True)
@@ -92,13 +104,13 @@ async def complete(callback_query: CallbackQuery, state: FSMContext) -> None:
                 msgpack.packb(
                     {
                         'event': 'application_form_new_status',
-                        'action': 'complete',
+                        'action': 'take_for_processing',
                         'clicked_admin_telegram_user_id': telegram_user_id,
                         'clicked_admin_message_id': message_id,
                         'owner_telegram_user_id': application_form_for_owner_data['chat_id'],
                         'owner_message_id': application_form_for_owner_data['message_id'],
                         'application_form_id': application_form_id,
-                        'new_status': 'completed',
+                        'new_status': 'in_processing',
                         'application_form_for_admins_response_message': application_form_for_admins_response_message
                     }
                 ),

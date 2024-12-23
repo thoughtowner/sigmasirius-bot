@@ -16,6 +16,7 @@ class User(Base):
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
 
     telegram_user_id: Mapped[int] = mapped_column(BigInteger)
+    telegram_user_username: Mapped[str] = mapped_column(String)
 
     roles: Mapped[List['UserRole']] = relationship(back_populates='user')
     resident_additional_data: Mapped['ResidentAdditionalData'] = relationship(back_populates='user')

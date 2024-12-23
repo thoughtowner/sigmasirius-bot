@@ -1,4 +1,4 @@
-from sqlalchemy import select, insert
+from sqlalchemy import select, insert, update
 
 from src.model.models import User, Role, UserRole
 
@@ -14,15 +14,14 @@ async def add_roles(db: AsyncSession):
     admin_role_id = admin_role_result.scalar()
 
     user_result = await db.execute(
-        select(User.id).filter(User.telegram_user_id == 785561828))
+        select(User.id).filter(User.telegram_user_username == 'thoughtowner'))
     user_id = user_result.scalar()
 
-    user_role_query = insert(UserRole).values(
-        user_id=user_id,
-        role_id=admin_role_id,
+    await db.execute(
+        update(UserRole).
+        where(UserRole.user_id == user_id).
+        values(role_id=admin_role_id)
     )
-
-    await db.execute(user_role_query)
     await db.commit()
 
 async def main():

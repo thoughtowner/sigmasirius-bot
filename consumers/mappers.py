@@ -9,12 +9,14 @@ from sqlalchemy import select
 
 def from_start_data_to_user(start_data: StartData) -> User:
     return User(
-        telegram_user_id=start_data['telegram_user_id']
+        telegram_user_id=start_data['telegram_user_id'],
+        telegram_user_username=start_data['telegram_user_username']
     )
 
 def from_registration_data_to_user(registration_data: RegistrationData) -> User:
     return User(
-        telegram_user_id=registration_data['telegram_user_id']
+        telegram_user_id=registration_data['telegram_user_id'],
+        telegram_user_username=registration_data['telegram_user_username']
     )
 
 def from_registration_data_to_resident_additional_data(registration_data: RegistrationData) -> ResidentAdditionalData:
@@ -37,7 +39,8 @@ def from_registration_data_to_role(registration_data: RegistrationData) -> Role:
 
 def from_application_form_data_to_user(application_form_data: ApplicationFormData) -> User:
     return User(
-        telegram_user_id=application_form_data['telegram_user_id']
+        telegram_user_id=application_form_data['telegram_user_id'],
+        telegram_user_username=application_form_data['telegram_user_username']
     )
 
 async def from_application_form_data_to_application_form(application_form_data: ApplicationFormData) -> ApplicationForm:

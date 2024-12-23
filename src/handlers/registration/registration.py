@@ -33,12 +33,13 @@ logging.config.dictConfig(LOGGING_CONFIG)
 @router.message(F.text == REGISTRATION)
 async def start_registration(message: Message, state: FSMContext):
     await state.update_data(telegram_user_id=message.from_user.id)
+    await state.update_data(telegram_user_username=message.from_user.username)
     await state.update_data(role='resident')
 
     data = await state.get_data()
     registration_data = RegistrationData(
         telegram_user_id=data['telegram_user_id'],
-        role=data['role'],
+        telegram_user_username=data['telegram_user_username'],
         full_name='check_registration',
         phone_number='',
         room=''
@@ -156,11 +157,13 @@ async def enter_room_number(message: Message, state: FSMContext):
     await state.update_data(room_number=room_number)
     data = await state.get_data()
     await message.answer(msg.PUSH_DATA_TO_REGISTRATION_QUERY, reply_markup=ReplyKeyboardRemove())
-    await state.clear()
+
+    await state.set_state('')
+    # await state.clear()
 
     registration_data = RegistrationData(
         telegram_user_id=data['telegram_user_id'],
-        role=data['role'],
+        telegram_user_username=data['telegram_user_username'],
         full_name=data['full_name'],
         phone_number=data['phone_number'],
         room=f"0{data['building']}-0{data['entrance']}-{data['room_number']}"

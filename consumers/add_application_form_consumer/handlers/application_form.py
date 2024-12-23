@@ -156,7 +156,8 @@ async def handle_application_form_event(message): # TODO async def handle_applic
                     )), 'application_form_for_admins_queue')
 
         except IntegrityError:
-            await bot.send_message(
-                text='При отправке заявки что-то пошло не так!',
-                chat_id=admin_telegram_user_id
-            )
+            pass
+            # await bot.send_message(
+            #     text='При отправке заявки что-то пошло не так!',
+            #     chat_id=admin_telegram_user_id
+            # )

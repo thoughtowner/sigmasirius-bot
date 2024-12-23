@@ -6,11 +6,11 @@ from aiogram.types import Message, TelegramObject
 
 from ..storage.db import async_session
 
-from sqlalchemy import select, and_
-from src.model.models import User, Role, UserRole
+from sqlalchemy import select
+from src.model.models import User, ResidentAdditionalData
 
 
-class ResidentMiddleware(BaseMiddleware):
+class AuthMiddleware(BaseMiddleware):
 
     async def __call__(
         self,
@@ -22,16 +22,13 @@ class ResidentMiddleware(BaseMiddleware):
         current_telegram_user_id = current_data['telegram_user_id']
 
         async with async_session() as db:
-            resident_role_result = await db.execute(select(Role.id).filter(Role.title == 'resident'))
-            resident_role_id = resident_role_result.scalar()
-
             user_result = await db.execute(select(User.id).filter(User.telegram_user_id == current_telegram_user_id))
             user_id = user_result.scalar()
 
-            user_role_result = await db.execute(select(UserRole).filter(and_(UserRole.user_id == user_id, UserRole.role_id == resident_role_id)))
-            user_role = user_role_result.scalar()
+            resident_additional_data_result = await db.execute(select(ResidentAdditionalData).filter(ResidentAdditionalData.user_id == user_id))
+            resident_additional_data = resident_additional_data_result.scalar()
 
-            if not user_role:
+            if not resident_additional_data:
                 raise SkipHandler('Unauthorized')
 
         return await handler(event, data)
