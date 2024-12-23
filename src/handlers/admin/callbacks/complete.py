@@ -16,9 +16,7 @@ from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from src.templates.env import render
 
-from aio_pika import ExchangeType
-
-from ...logger import LOGGING_CONFIG, logger
+from ....logger import LOGGING_CONFIG, logger
 
 from aio_pika import ExchangeType
 
@@ -26,8 +24,8 @@ from aio_pika import ExchangeType
 default = DefaultBotProperties(parse_mode=ParseMode.HTML)
 bot = Bot(token=settings.BOT_TOKEN, default=default)
 
-@router.callback_query(lambda callback_query: callback_query.data == 'cancel')
-async def cancel(callback_query: CallbackQuery, state: FSMContext) -> None:
+@router.callback_query(lambda callback_query: callback_query.data == 'complete')
+async def complete(callback_query: CallbackQuery, state: FSMContext) -> None:
     telegram_user_id = callback_query.from_user.id
     message_id = callback_query.message.message_id
 
@@ -35,8 +33,8 @@ async def cancel(callback_query: CallbackQuery, state: FSMContext) -> None:
         logger.info('Send data to add_application_form queue...')
 
         async with channel_pool.acquire() as _channel:  # type: aio_pika.Channel
-            application_form_for_admins_queue = await _channel.declare_queue('application_form_for_admins_queue',
-                                                                             durable=True)
+            application_form_for_admins_queue = await _channel.declare_queue('application_form_for_admins_queue', durable=True)
+
             unacked_messages = []
 
             retries = 3
@@ -77,6 +75,14 @@ async def cancel(callback_query: CallbackQuery, state: FSMContext) -> None:
             application_form_for_owner_data = application_form_for_admins_response_message['application_form_for_user_data']['owner']
             application_form_id = application_form_for_admins_response_message['application_form_id']
 
+        state_application_forms_data = await state.get_data()
+        for i, state_application_form_data in enumerate(state_application_forms_data['application_form']):
+            if state_application_form_data['clicked_admin_data']['chat_id'] == telegram_user_id and state_application_form_data['clicked_admin_data']['message_id'] == message_id:
+                del state_application_forms_data['application_form'][i]
+                break
+
+        await state.update_data(application_forms_data=state_application_forms_data)
+
         add_application_form_exchange = await channel.declare_exchange(settings.ADD_APPLICATION_FORM_EXCHANGE_NAME, ExchangeType.DIRECT, durable=True)
         add_application_form_queue = await channel.declare_queue(settings.ADD_APPLICATION_FORM_QUEUE_NAME, durable=True)
         await add_application_form_queue.bind(add_application_form_exchange, settings.ADD_APPLICATION_FORM_QUEUE_NAME)
@@ -92,7 +98,7 @@ async def cancel(callback_query: CallbackQuery, state: FSMContext) -> None:
                         'owner_telegram_user_id': application_form_for_owner_data['chat_id'],
                         'owner_message_id': application_form_for_owner_data['message_id'],
                         'application_form_id': application_form_id,
-                        'new_status': 'cancelled',
+                        'new_status': 'completed',
                         'application_form_for_admins_response_message': application_form_for_admins_response_message
                     }
                 ),

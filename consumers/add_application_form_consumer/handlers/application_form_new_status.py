@@ -255,8 +255,7 @@ async def handle_application_form_new_status_event(message): # TODO async def ha
                     message_id=owner_message_id
                 )
 
-        except IntegrityError as e:
-            print(e)
+        except IntegrityError:
             await bot.send_message(
                 text='При отправке заявки что-то пошло не так!',
                 chat_id=clicked_admin_telegram_user_id

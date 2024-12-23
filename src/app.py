@@ -12,9 +12,9 @@ from config.settings import settings
 from src.bg_tasks import background_tasks
 from src.bot import setup_bot, setup_dp
 from src.handlers.start.router import router as start_router
-from src.handlers.registration.router import router as registration_router
-from src.handlers.add_application_form.router import router as add_application_form_router
-from src.handlers.callback.router import router as callback_router
+from src.handlers.resident.registration.router import router as registration_router
+from src.handlers.resident.add_application_form.router import router as add_application_form_router
+from src.handlers.admin.callbacks.router import router as callback_router
 from src.logger import LOGGING_CONFIG, logger
 from src.storage.redis import setup_redis
 

@@ -14,7 +14,7 @@ async def add_roles(db: AsyncSession):
     admin_role_id = admin_role_result.scalar()
 
     user_result = await db.execute(
-        select(User.id).filter(User.telegram_user_id == 6244393260))
+        select(User.id).filter(User.telegram_user_id == 785561828))
     user_id = user_result.scalar()
 
     user_role_query = insert(UserRole).values(
