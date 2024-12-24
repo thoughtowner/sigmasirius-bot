@@ -1,1 +1,1 @@
-from . import health, metrics, temp
+from . import health, metrics

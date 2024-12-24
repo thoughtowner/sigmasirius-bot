@@ -25,7 +25,7 @@ import logging.config
 from aio_pika.exceptions import QueueEmpty
 import asyncio
 
-from src.bot import get_bot
+# from src.bot import bot
 
 from src.files_storage.storage_client import images_storage
 import io
@@ -68,7 +68,9 @@ async def enter_description(message: Message, state: FSMContext):
 
 @router.message(AddApplicationForm.photo)
 async def upload_photo(message: Message, state: FSMContext):
-    downloaded_photo_bytes_io = await get_bot().download(file=message.photo[-1].file_id)
+    from src.bot import bot
+
+    downloaded_photo_bytes_io = await bot.download(file=message.photo[-1].file_id)
     downloaded_photo_bytes_io.seek(0)
 
     photo_title = str(uuid4())
