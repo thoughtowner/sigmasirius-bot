@@ -11,10 +11,14 @@ from starlette_context.middleware import RawContextMiddleware
 from config.settings import settings
 from src.bg_tasks import background_tasks
 from src.bot import setup_bot, setup_dp
+
+from src.api.tg.router import router as tg_router
+from src.api.tech.router import router as tech_router
+
 from src.handlers.start.router import router as start_router
-from src.handlers.resident.registration.router import router as registration_router
-from src.handlers.resident.add_application_form.router import router as add_application_form_router
-from src.handlers.admin.callbacks.router import router as callback_router
+from src.handlers.registration.router import router as registration_router
+from src.handlers.add_application_form.router import router as add_application_form_router
+from src.handlers.callbacks.router import router as callback_router
 from src.logger import LOGGING_CONFIG, logger
 from src.storage.redis import setup_redis
 
@@ -29,9 +33,23 @@ async def lifespan(app: FastAPI) -> None:
     bot = Bot(token=settings.BOT_TOKEN)
     setup_bot(bot)
 
-    temp = await bot.get_webhook_info()
-    await bot.set_webhook(settings.BOT_WEBHOOK_URL)
+    polling_task: asyncio.Task[None] | None = None
+    wh_info = await bot.get_webhook_info()
+    if settings.BOT_WEBHOOK_URL and wh_info.url != settings.BOT_WEBHOOK_URL:
+        await bot.set_webhook(settings.BOT_WEBHOOK_URL)
+    else:
+        polling_task = asyncio.create_task(dp.start_polling(bot, handle_signals=False))
+
+    logger.info("Finished start")
     yield
+
+    if polling_task is not None:
+        logger.info("Stopping polling...")
+        polling_task.cancel()
+        try:
+            await polling_task
+        except asyncio.CancelledError:
+            logger.info("Polling stopped")
 
     while background_tasks:
         await asyncio.sleep(0)
@@ -41,6 +59,8 @@ async def lifespan(app: FastAPI) -> None:
 
 def create_app() -> FastAPI:
     app = FastAPI(docs_url='/swagger', lifespan=lifespan)
+    app.include_router(tg_router, prefix='/tg', tags=['tg'])
+    app.include_router(tech_router, prefix='', tags=['tech'])
 
     app.add_middleware(RawContextMiddleware, plugins=[plugins.CorrelationIdPlugin()])
     return app
@@ -68,7 +88,4 @@ async def start_polling():
 
 
 if __name__ == '__main__':
-    if settings.BOT_WEBHOOK_URL:
-        uvicorn.run('src.app:create_app', factory=True, host='0.0.0.0', port=8000, workers=1)
-    else:
-        asyncio.run(start_polling())
+    uvicorn.run('src.app:create_app', factory=True, host='0.0.0.0', port=8000, workers=1)
