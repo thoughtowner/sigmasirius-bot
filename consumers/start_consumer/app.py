@@ -22,11 +22,13 @@ from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from src.templates.env import render
 
+from .metrics import TOTAL_RECEIVED_MESSAGES
+
 
 default = DefaultBotProperties(parse_mode=ParseMode.HTML)
 bot = Bot(token=settings.BOT_TOKEN, default=default)
 
-async def main() -> None:
+async def start_consumer() -> None:
     logging.config.dictConfig(LOGGING_CONFIG)
     logger.info('Starting start consumer...')
 
@@ -39,6 +41,7 @@ async def main() -> None:
         logger.info('Start consumer started!')
         async with start_queue.iterator() as queue_iter:
             async for message in queue_iter: # type: aio_pika.Message
+                TOTAL_RECEIVED_MESSAGES.inc()
                 async with message.process():
                     # correlation_id_ctx.set(message.correlation_id)
                     start_data = msgpack.unpackb(message.body)

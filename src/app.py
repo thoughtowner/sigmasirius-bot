@@ -22,7 +22,12 @@ from src.handlers.callbacks.router import router as callback_router
 from src.logger import LOGGING_CONFIG, logger
 from src.storage.redis import setup_redis
 
+from contextlib import asynccontextmanager
+from aiogram.client.default import DefaultBotProperties
+from aiogram.enums import ParseMode
 
+
+@asynccontextmanager
 async def lifespan(app: FastAPI) -> None:
     logging.config.dictConfig(LOGGING_CONFIG)
 
@@ -67,6 +72,8 @@ def create_app() -> FastAPI:
 
 
 async def start_polling():
+    logging.config.dictConfig(LOGGING_CONFIG)
+
     logging.error('Starting polling')
     redis = setup_redis()
     storage = RedisStorage(redis=redis)
@@ -74,7 +81,8 @@ async def start_polling():
     dp = Dispatcher(storage=storage)
 
     setup_dp(dp)
-    bot = Bot(token=settings.BOT_TOKEN)
+    default = DefaultBotProperties(parse_mode=ParseMode.HTML)
+    bot = Bot(token=settings.BOT_TOKEN, default=default)
     setup_bot(bot)
 
     dp.include_router(start_router)
@@ -88,4 +96,7 @@ async def start_polling():
 
 
 if __name__ == '__main__':
-    uvicorn.run('src.app:create_app', factory=True, host='0.0.0.0', port=8000, workers=1)
+    if settings.BOT_WEBHOOK_URL:
+        uvicorn.run('src.app:create_app', factory=True, host='0.0.0.0', port=8000, workers=1)
+    else:
+        asyncio.run(start_polling())
