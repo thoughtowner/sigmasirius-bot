@@ -30,7 +30,7 @@ async def complete(callback_query: CallbackQuery, state: FSMContext) -> None:
     message_id = callback_query.message.message_id
 
     async with channel_pool.acquire() as channel:  # type: aio_pika.Channel
-        logger.info('Send data to add_application_form queue...')
+        logger.info('Send data to application_form queue...')
 
         async with channel_pool.acquire() as _channel:  # type: aio_pika.Channel
             application_form_for_admins_queue = await _channel.declare_queue('application_form_for_admins_queue', durable=True)
@@ -83,11 +83,11 @@ async def complete(callback_query: CallbackQuery, state: FSMContext) -> None:
 
         await state.update_data(application_forms_data=state_application_forms_data)
 
-        add_application_form_exchange = await channel.declare_exchange(settings.ADD_APPLICATION_FORM_EXCHANGE_NAME, ExchangeType.DIRECT, durable=True)
-        add_application_form_queue = await channel.declare_queue(settings.ADD_APPLICATION_FORM_QUEUE_NAME, durable=True)
-        await add_application_form_queue.bind(add_application_form_exchange, settings.ADD_APPLICATION_FORM_QUEUE_NAME)
+        application_form_exchange = await channel.declare_exchange(settings.APPLICATION_FORM_EXCHANGE_NAME, ExchangeType.DIRECT, durable=True)
+        application_form_queue = await channel.declare_queue(settings.APPLICATION_FORM_QUEUE_NAME, durable=True)
+        await application_form_queue.bind(application_form_exchange, settings.APPLICATION_FORM_QUEUE_NAME)
 
-        await add_application_form_exchange.publish(
+        await application_form_exchange.publish(
             aio_pika.Message(
                 msgpack.packb(
                     {
@@ -104,5 +104,5 @@ async def complete(callback_query: CallbackQuery, state: FSMContext) -> None:
                 ),
                 # correlation_id=correlation_id_ctx.get()
             ),
-            settings.ADD_APPLICATION_FORM_QUEUE_NAME
+            settings.APPLICATION_FORM_QUEUE_NAME
         )

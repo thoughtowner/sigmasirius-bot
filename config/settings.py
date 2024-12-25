@@ -30,9 +30,8 @@ class Settings(BaseSettings):
     REGISTRATION_QUEUE_NAME: str = 'registration_queue'
     USER_REGISTRATION_QUEUE_TEMPLATE: str = 'user_registration_queue.{telegram_user_id}'
 
-    ADD_APPLICATION_FORM_EXCHANGE_NAME: str = 'add_application_form_exchange'
-    ADD_APPLICATION_FORM_QUEUE_NAME: str = 'add_application_form_queue'
-    USER_ADD_APPLICATION_FORM_QUEUE_NAME: str = 'user_add_application_form_queue'
+    APPLICATION_FORM_EXCHANGE_NAME: str = 'application_form_exchange'
+    APPLICATION_FORM_QUEUE_NAME: str = 'application_form_queue'
 
 
     @property

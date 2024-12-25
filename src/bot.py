@@ -6,7 +6,7 @@ from aiogram.fsm.storage.redis import RedisStorage
 from config.settings import settings
 from src.handlers.start.router import router as start_router
 from src.handlers.registration.router import router as registration_router
-from src.handlers.add_application_form.router import router as add_application_form_router
+from src.handlers.application_form.router import router as add_application_form_router
 from src.handlers.callbacks.router import router as callback_router
 from src.storage.redis import redis_storage
 

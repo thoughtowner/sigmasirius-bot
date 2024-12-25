@@ -9,10 +9,10 @@ from aio_pika import ExchangeType
 from starlette_context.header_keys import HeaderKeys
 from starlette_context import context
 
-from consumers.add_application_form_consumer.logger import correlation_id_ctx
+from consumers.application_form_consumer.logger import correlation_id_ctx
 
 from config.settings import settings
-from consumers.add_application_form_consumer.schema.application_form_data import ApplicationFormData
+from consumers.application_form_consumer.schema.application_form_data import ApplicationFormData
 from src.states.add_application_form import AddApplicationForm
 from .router import router
 from src.validators.add_application_form.validators import TitleValidator, DescriptionValidator
@@ -96,15 +96,15 @@ async def upload_photo(message: Message, state: FSMContext):
     )
 
     async with channel_pool.acquire() as channel:  # type: aio_pika.Channel
-        logger.info('Send data to add_application_form queue...')
-        add_application_form_exchange = await channel.declare_exchange(settings.ADD_APPLICATION_FORM_EXCHANGE_NAME, ExchangeType.DIRECT, durable=True)
-        add_application_form_queue = await channel.declare_queue(settings.ADD_APPLICATION_FORM_QUEUE_NAME, durable=True)
-        await add_application_form_queue.bind(add_application_form_exchange, settings.ADD_APPLICATION_FORM_QUEUE_NAME)
+        logger.info('Send data to application_form queue...')
+        application_form_exchange = await channel.declare_exchange(settings.APPLICATION_FORM_EXCHANGE_NAME, ExchangeType.DIRECT, durable=True)
+        application_form_queue = await channel.declare_queue(settings.APPLICATION_FORM_QUEUE_NAME, durable=True)
+        await application_form_queue.bind(application_form_exchange, settings.APPLICATION_FORM_QUEUE_NAME)
 
-        await add_application_form_exchange.publish(
+        await application_form_exchange.publish(
             aio_pika.Message(
                 msgpack.packb(application_form_data),
                 # correlation_id=correlation_id_ctx.get()
             ),
-            settings.ADD_APPLICATION_FORM_QUEUE_NAME
+            settings.APPLICATION_FORM_QUEUE_NAME
         )

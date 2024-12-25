@@ -1,7 +1,7 @@
 import asyncio
 
-from consumers.registration_consumer.app import main
+from consumers.registration_consumer.app import registration_consumer
 
 
 if __name__ == '__main__':
-    asyncio.run(main())
+    asyncio.run(registration_consumer())

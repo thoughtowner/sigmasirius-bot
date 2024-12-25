@@ -27,10 +27,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     wh_info = await bot.get_webhook_info()
     if settings.BOT_WEBHOOK_URL and wh_info.url != settings.BOT_WEBHOOK_URL:
         await bot.set_webhook(settings.BOT_WEBHOOK_URL)
-        logger.info("1")
     else:
         polling_task = asyncio.create_task(dp.start_polling(bot, handle_signals=False))
-        logger.info("2")
 
     logger.info("Finished start")
     yield

@@ -8,7 +8,7 @@ from sqlalchemy.exc import IntegrityError
 from consumers.model.models import User, Role, ApplicationForm, ResidentAdditionalData, ApplicationFormStatus, UserRole
 from sqlalchemy import insert, select
 
-from consumers.add_application_form_consumer.schema.application_form_for_admins_data import ApplicationFormForAdminsData
+from consumers.application_form_consumer.schema.application_form_for_admins_data import ApplicationFormForAdminsData
 
 from aiogram import Bot
 from aiogram.client.default import DefaultBotProperties

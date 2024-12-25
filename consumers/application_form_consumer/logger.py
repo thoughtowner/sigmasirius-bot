@@ -20,4 +20,4 @@ class ConsoleFormatter(logging.Formatter):
 
 correlation_id_ctx = ContextVar('correlation_id')
 
-logger = logging.getLogger('add_application_form_consumer_logger')
+logger = logging.getLogger('application_form_consumer_logger')

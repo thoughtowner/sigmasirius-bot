@@ -16,8 +16,10 @@ from sqlalchemy.exc import IntegrityError
 from consumers.model.models import User, Role, ResidentAdditionalData, UserRole
 from sqlalchemy import select, insert
 
+from .metrics import TOTAL_RECEIVED_MESSAGES
 
-async def main() -> None:
+
+async def registration_consumer() -> None:
     logging.config.dictConfig(LOGGING_CONFIG)
     logger.info('Starting registration consumer...')
 
@@ -30,6 +32,7 @@ async def main() -> None:
         logger.info('Registration consumer started!')
         async with registration_queue.iterator() as queue_iter:
             async for message in queue_iter: # type: aio_pika.Message
+                TOTAL_RECEIVED_MESSAGES.inc()
                 async with message.process():
                     try:
                         # correlation_id_ctx.set(message.correlation_id)
@@ -100,5 +103,5 @@ async def main() -> None:
                                         f'user_registration_queue.{registration_data["telegram_user_id"]}'
                                     )
 
-                    except IntegrityError as e:
-                        print(e)
+                    except IntegrityError:
+                        pass

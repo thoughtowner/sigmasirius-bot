@@ -13,7 +13,7 @@ services:
 
 #  consumer:
 #    build: .
-#    command: scripts/startup.sh
+#    command: src/app.py
 #    volumes:
 #      - "./:/code"
 #    ports:

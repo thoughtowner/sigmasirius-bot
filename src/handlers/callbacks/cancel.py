@@ -2,26 +2,18 @@ import asyncio
 
 import aio_pika
 import msgpack
+from aio_pika import ExchangeType
 from aio_pika.exceptions import QueueEmpty
+from aiogram import Bot
+from aiogram.client.default import DefaultBotProperties
+from aiogram.enums import ParseMode
 from aiogram.fsm.context import FSMContext
-from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup
-from aio_pika import Queue
+from aiogram.types import CallbackQuery
 
 from config.settings import settings
 from src.storage.rabbit import channel_pool
 from .router import router
-
-from aiogram import Bot
-from aiogram.client.default import DefaultBotProperties
-from aiogram.enums import ParseMode
-from src.templates.env import render
-
-from aio_pika import ExchangeType
-
-from ...logger import LOGGING_CONFIG, logger
-
-from aio_pika import ExchangeType
-
+from ...logger import logger
 
 default = DefaultBotProperties(parse_mode=ParseMode.HTML)
 bot = Bot(token=settings.BOT_TOKEN, default=default)
@@ -32,7 +24,7 @@ async def cancel(callback_query: CallbackQuery, state: FSMContext) -> None:
     message_id = callback_query.message.message_id
 
     async with channel_pool.acquire() as channel:  # type: aio_pika.Channel
-        logger.info('Send data to add_application_form queue...')
+        logger.info('Send data to application_form queue...')
 
         async with channel_pool.acquire() as _channel:  # type: aio_pika.Channel
             application_form_for_admins_queue = await _channel.declare_queue('application_form_for_admins_queue',
@@ -77,11 +69,11 @@ async def cancel(callback_query: CallbackQuery, state: FSMContext) -> None:
             application_form_for_owner_data = application_form_for_admins_response_message['application_form_for_user_data']['owner']
             application_form_id = application_form_for_admins_response_message['application_form_id']
 
-        add_application_form_exchange = await channel.declare_exchange(settings.ADD_APPLICATION_FORM_EXCHANGE_NAME, ExchangeType.DIRECT, durable=True)
-        add_application_form_queue = await channel.declare_queue(settings.ADD_APPLICATION_FORM_QUEUE_NAME, durable=True)
-        await add_application_form_queue.bind(add_application_form_exchange, settings.ADD_APPLICATION_FORM_QUEUE_NAME)
+        application_form_exchange = await channel.declare_exchange(settings.APPLICATION_FORM_EXCHANGE_NAME, ExchangeType.DIRECT, durable=True)
+        application_form_queue = await channel.declare_queue(settings.APPLICATION_FORM_QUEUE_NAME, durable=True)
+        await application_form_queue.bind(application_form_exchange, settings.APPLICATION_FORM_QUEUE_NAME)
 
-        await add_application_form_exchange.publish(
+        await application_form_exchange.publish(
             aio_pika.Message(
                 msgpack.packb(
                     {
@@ -98,5 +90,5 @@ async def cancel(callback_query: CallbackQuery, state: FSMContext) -> None:
                 ),
                 # correlation_id=correlation_id_ctx.get()
             ),
-            settings.ADD_APPLICATION_FORM_QUEUE_NAME
+            settings.APPLICATION_FORM_QUEUE_NAME
         )

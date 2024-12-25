@@ -1,9 +1,9 @@
 from consumers.model.models import User, Role, ResidentAdditionalData, AdminAdditionalData, ApplicationForm, ApplicationFormStatus
 from consumers.start_consumer.schema.start_data import StartData
 from consumers.registration_consumer.schema.registration_data import RegistrationData
-from consumers.add_application_form_consumer.schema.application_form_data import ApplicationFormData
+from consumers.application_form_consumer.schema.application_form_data import ApplicationFormData
 
-from consumers.add_application_form_consumer.storage.db import async_session
+from consumers.application_form_consumer.storage.db import async_session
 from sqlalchemy import select
 
 
