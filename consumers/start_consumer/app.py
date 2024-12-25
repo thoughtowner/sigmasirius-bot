@@ -56,21 +56,6 @@ async def start_consumer() -> None:
                             )
 
                             await db.execute(user_query)
-                            await db.flush()
-
-                            user_result = await db.execute(
-                                select(User.id).filter(User.telegram_user_id == user_instance.telegram_user_id))
-                            user_id = user_result.scalar()
-
-                            resident_role_result = await db.execute(
-                                select(Role.id).filter(Role.title == 'resident'))
-                            resident_role_id = resident_role_result.scalar()
-
-                            user_role_query = insert(UserRole).values(
-                                user_id=user_id,
-                                role_id=resident_role_id,
-                            )
-                            await db.execute(user_role_query)
 
                             await db.commit()
 

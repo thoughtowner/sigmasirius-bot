@@ -14,7 +14,7 @@ from consumers.application_form_consumer.logger import correlation_id_ctx
 from config.settings import settings
 from consumers.application_form_consumer.schema.application_form_data import ApplicationFormData
 from src.states.add_application_form import AddApplicationForm
-from .router import router
+from ..router import router
 from src.validators.add_application_form.validators import TitleValidator, DescriptionValidator
 from src.validators.add_application_form import errors as validation
 from src.messages import add_application_form as msg

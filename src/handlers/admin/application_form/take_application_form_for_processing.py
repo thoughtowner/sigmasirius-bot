@@ -9,14 +9,14 @@ from aio_pika import Queue
 
 from config.settings import settings
 from src.storage.rabbit import channel_pool
-from .router import router
+from ..router import router
 
 from aiogram import Bot
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from src.templates.env import render
 
-from ...logger import LOGGING_CONFIG, logger
+from src.logger import LOGGING_CONFIG, logger
 
 from aio_pika import ExchangeType
 

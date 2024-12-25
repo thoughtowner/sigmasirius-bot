@@ -14,7 +14,7 @@ from aio_pika import ExchangeType
 from sqlalchemy.exc import IntegrityError
 
 from consumers.model.models import User, Role, ResidentAdditionalData, UserRole
-from sqlalchemy import select, insert
+from sqlalchemy import select, insert, and_
 
 from .metrics import TOTAL_RECEIVED_MESSAGES
 
@@ -44,14 +44,19 @@ async def registration_consumer() -> None:
 
                         if registration_data['full_name'] == 'check_registration':
                             async with async_session() as db:
-                                user_result = await db.execute(
+                                user_id_query = await db.execute(
                                     select(User.id).filter(User.telegram_user_id == user_instance.telegram_user_id))
-                                user_id = user_result.scalar()
+                                user_id = user_id_query.scalar()
 
-                                resident_additional_data_query = await db.execute(select(ResidentAdditionalData).where(ResidentAdditionalData.user_id == user_id))
-                                resident_additional_data_result = resident_additional_data_query.all()
+                                resident_role_id_query = await db.execute(
+                                    select(Role.id).filter(Role.title == 'resident'))
+                                resident_role_id = resident_role_id_query.scalar()
 
-                                if resident_additional_data_result:
+                                user_role_query = await db.execute(
+                                    select(UserRole).where(and_(UserRole.user_id == user_id, UserRole.role_id == resident_role_id)))
+                                user_role_result = user_role_query.all()
+
+                                if user_role_result:
                                     logger.info("This user with this data is already registered: %s", registration_data)
                                     async with channel_pool.acquire() as _channel:
                                         registration_exchange = await _channel.declare_exchange("registration_exchange", ExchangeType.DIRECT, durable=True)
@@ -78,13 +83,23 @@ async def registration_consumer() -> None:
                                     select(User.id).filter(User.telegram_user_id == user_instance.telegram_user_id))
                                 user_id = user_result.scalar()
 
-                                resident_additional_data_query = insert(ResidentAdditionalData).values(
+                                resident_role_id_query = await db.execute(
+                                    select(Role.id).filter(Role.title == 'resident'))
+                                resident_role_id = resident_role_id_query.scalar()
+
+                                await db.execute(insert(UserRole).values(
+                                    user_id=user_id,
+                                    role_id=resident_role_id
+                                ))
+
+                                await db.flush()
+
+                                await db.execute(insert(ResidentAdditionalData).values(
                                     full_name=resident_additional_data_instance.full_name,
                                     phone_number=resident_additional_data_instance.phone_number,
                                     room=resident_additional_data_instance.room,
                                     user_id=user_id
-                                )
-                                await db.execute(resident_additional_data_query)
+                                ))
 
                                 await db.commit()
 
@@ -103,5 +118,5 @@ async def registration_consumer() -> None:
                                         f'user_registration_queue.{registration_data["telegram_user_id"]}'
                                     )
 
-                    except IntegrityError:
-                        pass
+                    except IntegrityError as e:
+                        print(e)

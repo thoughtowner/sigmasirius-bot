@@ -17,11 +17,10 @@ async def add_roles(db: AsyncSession):
         select(User.id).filter(User.telegram_user_username == 'thoughtowner'))
     user_id = user_result.scalar()
 
-    await db.execute(
-        update(UserRole).
-        where(UserRole.user_id == user_id).
-        values(role_id=admin_role_id)
-    )
+    await db.execute(insert(UserRole).values(
+        user_id=user_id,
+        role_id=admin_role_id
+    ))
     await db.commit()
 
 async def main():

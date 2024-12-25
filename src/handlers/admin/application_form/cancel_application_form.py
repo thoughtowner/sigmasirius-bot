@@ -12,8 +12,8 @@ from aiogram.types import CallbackQuery
 
 from config.settings import settings
 from src.storage.rabbit import channel_pool
-from .router import router
-from ...logger import logger
+from ..router import router
+from src.logger import logger
 
 default = DefaultBotProperties(parse_mode=ParseMode.HTML)
 bot = Bot(token=settings.BOT_TOKEN, default=default)
