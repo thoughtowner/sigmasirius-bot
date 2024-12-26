@@ -1,14 +1,14 @@
-from ...mappers import from_application_form_data_to_user, from_application_form_data_to_application_form
+from ..mappers import get_user, get_application_form
 from config.settings import settings
 from ..storage.db import async_session
 
 from aio_pika import ExchangeType
 from sqlalchemy.exc import IntegrityError
 
-from consumers.model.models import User, Role, ApplicationForm, ResidentAdditionalData, ApplicationFormStatus, UserRole
+from ..model.models import User, Role, ApplicationForm, ResidentAdditionalData, ApplicationFormStatus, UserRole
 from sqlalchemy import insert, select
 
-from consumers.application_form_consumer.schema.application_form_for_admins_data import ApplicationFormForAdminsData
+from ..schema.application_form_for_admin import ApplicationFormForAdminMessage
 
 from aiogram import Bot
 from aiogram.client.default import DefaultBotProperties
@@ -30,7 +30,7 @@ from ..storage.rabbit import channel_pool
 default = DefaultBotProperties(parse_mode=ParseMode.HTML)
 bot = Bot(token=settings.BOT_TOKEN, default=default)
 
-async def handle_application_form_event(message): # TODO async def handle_application_form_event(message: ApplicationFormMessage)
+async def handle_add_application_form_event(message): # TODO async def handle_application_form_event(message: ApplicationFormMessage)
     if message['action'] == 'add_application_form':
         user_instance = from_application_form_data_to_user(message)
         application_form_instance = await from_application_form_data_to_application_form(message)
@@ -38,7 +38,7 @@ async def handle_application_form_event(message): # TODO async def handle_applic
         try:
             async with async_session() as db:
                 user_result = await db.execute(
-                    select(User.id).filter(User.telegram_user_id == user_instance.telegram_user_id))
+                    select(User.id).filter(User.telegram_id == user_instance.telegram_id))
                 user_id = user_result.scalar()
 
                 application_form_query = insert(ApplicationForm).values(
@@ -54,7 +54,7 @@ async def handle_application_form_event(message): # TODO async def handle_applic
 
                 application_form_for_admins_query = (
                     select(
-                        User.telegram_user_id,
+                        User.telegram_id,
                         ResidentAdditionalData.full_name,
                         ResidentAdditionalData.phone_number,
                         ResidentAdditionalData.room,
@@ -72,8 +72,8 @@ async def handle_application_form_event(message): # TODO async def handle_applic
                 application_form_for_admins_result = await db.execute(application_form_for_admins_query)
                 application_form_for_admins = application_form_for_admins_result.fetchone()
 
-                parsed_application_form_for_admins = ApplicationFormForAdminsData(
-                    telegram_user_id=application_form_for_admins[0],
+                parsed_application_form_for_admins = ApplicationFormForAdminMessage(
+                    telegram_id=application_form_for_admins[0],
                     resident_full_name=application_form_for_admins[1],
                     resident_phone_number=application_form_for_admins[2],
                     resident_room=application_form_for_admins[3],
@@ -88,15 +88,15 @@ async def handle_application_form_event(message): # TODO async def handle_applic
                 )
                 admin_role_id = admin_role_id_result.scalar()
 
-                admins_telegram_user_id_query = await db.execute(
-                    select(User.telegram_user_id)
+                admins_telegram_id_query = await db.execute(
+                    select(User.telegram_id)
                     .join(UserRole, UserRole.user_id == User.id)
                     .filter(UserRole.role_id == admin_role_id)
                 )
-                admins_telegram_user_id = admins_telegram_user_id_query.scalars().all()
+                admins_telegram_id = admins_telegram_id_query.scalars().all()
 
                 application_form_for_admins_data = []
-                for admin_telegram_user_id in admins_telegram_user_id:
+                for admin_telegram_id in admins_telegram_id:
                     photo_input_file = BufferedInputFile(images_storage.get_file(message['photo_title']),
                                                          message['photo_title'])
 
@@ -114,12 +114,12 @@ async def handle_application_form_event(message): # TODO async def handle_applic
                             application_form_for_admins=parsed_application_form_for_admins
                         ),
                         reply_markup=markup,
-                        chat_id=admin_telegram_user_id
+                        chat_id=admin_telegram_id
                     )
 
                     application_form_for_admins_data.append(
                         {
-                            'chat_id': admin_telegram_user_id,
+                            'chat_id': admin_telegram_id,
                             'message_id': application_form_for_admins_message.message_id
                         }
                     )
@@ -133,11 +133,11 @@ async def handle_application_form_event(message): # TODO async def handle_applic
                         'application_form_for_admins/application_form_for_admins.jinja2',
                         application_form_for_admins=parsed_application_form_for_admins
                     ),
-                    chat_id=parsed_application_form_for_admins['telegram_user_id']
+                    chat_id=parsed_application_form_for_admins['telegram_id']
                 )
 
                 application_form_for_owner_data = {
-                    'chat_id': parsed_application_form_for_admins['telegram_user_id'],
+                    'chat_id': parsed_application_form_for_admins['telegram_id'],
                     'message_id': application_form_for_owner_message.message_id
                 }
 
@@ -159,5 +159,5 @@ async def handle_application_form_event(message): # TODO async def handle_applic
             pass
             # await bot.send_message(
             #     text='При отправке заявки что-то пошло не так!',
-            #     chat_id=admin_telegram_user_id
+            #     chat_id=admin_telegram_id
             # )

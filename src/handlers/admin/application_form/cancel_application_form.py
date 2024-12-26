@@ -20,7 +20,7 @@ bot = Bot(token=settings.BOT_TOKEN, default=default)
 
 @router.callback_query(lambda callback_query: callback_query.data == 'cancel')
 async def cancel(callback_query: CallbackQuery, state: FSMContext) -> None:
-    telegram_user_id = callback_query.from_user.id
+    telegram_id = callback_query.from_user.id
     message_id = callback_query.message.message_id
 
     async with channel_pool.acquire() as channel:  # type: aio_pika.Channel
@@ -43,7 +43,7 @@ async def cancel(callback_query: CallbackQuery, state: FSMContext) -> None:
                             application_form_for_admins_data = application_form_for_admins_response_message['application_form_for_user_data']['admins']
 
                             for application_form_for_admin_data in application_form_for_admins_data:
-                                if application_form_for_admin_data['chat_id'] == telegram_user_id and application_form_for_admin_data['message_id'] == message_id:
+                                if application_form_for_admin_data['chat_id'] == telegram_id and application_form_for_admin_data['message_id'] == message_id:
                                     await packed_application_form_for_admins_response_message.ack()
                                     is_consume_needed_message_from_queue = True
                                     break
@@ -79,9 +79,9 @@ async def cancel(callback_query: CallbackQuery, state: FSMContext) -> None:
                     {
                         'event': 'application_form_new_status',
                         'action': 'complete',
-                        'clicked_admin_telegram_user_id': telegram_user_id,
+                        'clicked_admin_telegram_id': telegram_id,
                         'clicked_admin_message_id': message_id,
-                        'owner_telegram_user_id': application_form_for_owner_data['chat_id'],
+                        'owner_telegram_id': application_form_for_owner_data['chat_id'],
                         'owner_message_id': application_form_for_owner_data['message_id'],
                         'application_form_id': application_form_id,
                         'new_status': 'cancelled',

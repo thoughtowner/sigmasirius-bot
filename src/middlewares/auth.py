@@ -19,10 +19,10 @@ class AuthMiddleware(BaseMiddleware):
         data: Dict[str, Any]
     ) -> Any:
         current_data = await data['state'].get_data()
-        current_telegram_user_id = current_data['telegram_user_id']
+        current_telegram_id = current_data['telegram_id']
 
         async with async_session() as db:
-            user_result = await db.execute(select(User.id).filter(User.telegram_user_id == current_telegram_user_id))
+            user_result = await db.execute(select(User.id).filter(User.telegram_id == current_telegram_id))
             user_id = user_result.scalar()
 
             resident_additional_data_result = await db.execute(select(ResidentAdditionalData).filter(ResidentAdditionalData.user_id == user_id))

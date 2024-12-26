@@ -28,7 +28,7 @@ class Settings(BaseSettings):
 
     REGISTRATION_EXCHANGE_NAME: str = 'registration_exchange'
     REGISTRATION_QUEUE_NAME: str = 'registration_queue'
-    USER_REGISTRATION_QUEUE_TEMPLATE: str = 'user_registration_queue.{telegram_user_id}'
+    USER_REGISTRATION_QUEUE_TEMPLATE: str = 'user_registration_queue.{telegram_id}'
 
     APPLICATION_FORM_EXCHANGE_NAME: str = 'application_form_exchange'
     APPLICATION_FORM_QUEUE_NAME: str = 'application_form_queue'

@@ -1,8 +1,9 @@
-from typing import TypedDict
+from .base import BaseMessage
 
 
-class ApplicationFormForAdminsData(TypedDict):
-    telegram_user_id: int
+class ApplicationFormForAdminMessage(BaseMessage):
+    action: str
+    telegram_id: int
     title: str
     description: str
     status: str

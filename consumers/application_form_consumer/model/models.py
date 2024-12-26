@@ -3,20 +3,19 @@ from typing import List
 from sqlalchemy import  String, Text, BigInteger, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from consumers.model.meta import Base
+from ..model.meta import Base
 
 
 class User(Base):
-    __tablename__ = 'user'
+    __tablename__ = 'users'
 
     __table_args__ = (
-        UniqueConstraint('telegram_user_id', name='user_unique_telegram_user_id'),
+        UniqueConstraint('telegram_id', name='users_unique_telegram_id'),
     )
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
 
-    telegram_user_id: Mapped[int] = mapped_column(BigInteger)
-    telegram_user_username: Mapped[str] = mapped_column(String)
+    telegram_id: Mapped[int] = mapped_column(BigInteger)
 
     roles: Mapped[List['UserRole']] = relationship(back_populates='user')
     resident_additional_data: Mapped['ResidentAdditionalData'] = relationship(back_populates='user')
@@ -25,10 +24,10 @@ class User(Base):
 
 
 class Role(Base):
-    __tablename__ = 'role'
+    __tablename__ = 'roles'
 
     __table_args__ = (
-        UniqueConstraint('title', name='role_unique_title'),
+        UniqueConstraint('title', name='roles_unique_title'),
     )
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
@@ -39,10 +38,10 @@ class Role(Base):
 
 
 class UserRole(Base):
-    __tablename__ = 'user_role'
+    __tablename__ = 'user_to_role'
 
     __table_args__ = (
-        UniqueConstraint('user_id', 'role_id', name='role_role_user_id_unique_combined_role_id'),
+        UniqueConstraint('user_id', 'role_id', name='user_to_role_user_id_unique_combined_role_id'),
     )
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
@@ -88,7 +87,7 @@ class AdminAdditionalData(Base):
 
 
 class ApplicationForm(Base):
-    __tablename__ = 'application_form'
+    __tablename__ = 'application_forms'
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
 
@@ -103,10 +102,10 @@ class ApplicationForm(Base):
 
 
 class ApplicationFormStatus(Base):
-    __tablename__ = 'application_form_status'
+    __tablename__ = 'application_form_statuses'
 
     __table_args__ = (
-        UniqueConstraint('title', name='application_form_status_unique_title'),
+        UniqueConstraint('title', name='application_form_statuses_unique_title'),
     )
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)

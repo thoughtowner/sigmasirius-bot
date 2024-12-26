@@ -19,13 +19,13 @@ class AdminMiddleware(BaseMiddleware):
             data: Dict[str, Any]
     ) -> Any:
         current_data = await data['state'].get_data()
-        current_telegram_user_id = current_data['telegram_user_id']
+        current_telegram_id = current_data['telegram_id']
 
         async with async_session() as db:
             admin_role_result = await db.execute(select(Role.id).filter(Role.title == 'admin'))
             admin_role_id = admin_role_result.scalar()
 
-            user_result = await db.execute(select(User.id).filter(User.telegram_user_id == current_telegram_user_id))
+            user_result = await db.execute(select(User.id).filter(User.telegram_id == current_telegram_id))
             user_id = user_result.scalar()
 
             user_role_result = await db.execute(

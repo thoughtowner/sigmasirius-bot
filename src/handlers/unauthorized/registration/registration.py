@@ -11,9 +11,10 @@ from starlette_context import context
 from consumers.registration_consumer.logger import correlation_id_ctx
 
 from config.settings import settings
-from consumers.registration_consumer.schema.registration_data import RegistrationData
+from src.schema.registration.registration import RegistrationMessage
+from src.schema.registration.check_registration import CheckRegistrationMessage
 from src.states.registration import Registration
-from .router import router
+from ..router import router
 from src.keyboard_buttons.registration import BUILDINGS_ROW_BUTTONS, ENTRANCES_ROW_BUTTONS, FLOORS_ROW_BUTTONS, ROOM_NUMBERS_BY_FLOOR_ROW_BUTTONS
 from aiogram.types import ReplyKeyboardRemove
 from src.validators.registration.validators import FullNameValidator, PhoneNumberValidator
@@ -32,17 +33,13 @@ logging.config.dictConfig(LOGGING_CONFIG)
 
 @router.message(F.text == REGISTRATION)
 async def start_registration(message: Message, state: FSMContext):
-    await state.update_data(telegram_user_id=message.from_user.id)
-    await state.update_data(telegram_user_username=message.from_user.username)
+    await state.update_data(telegram_id=message.from_user.id)
     await state.update_data(role='resident')
 
     data = await state.get_data()
-    registration_data = RegistrationData(
-        telegram_user_id=data['telegram_user_id'],
-        telegram_user_username=data['telegram_user_username'],
-        full_name='check_registration',
-        phone_number='',
-        room=''
+    check_registration_message = CheckRegistrationMessage(
+        event='check_registration',
+        telegram_id=data['telegram_id'],
     )
 
     async with channel_pool.acquire() as channel:  # type: aio_pika.Channel
@@ -53,7 +50,7 @@ async def start_registration(message: Message, state: FSMContext):
 
         await registration_exchange.publish(
             aio_pika.Message(
-                msgpack.packb(registration_data),
+                msgpack.packb(check_registration_message),
                 # correlation_id=correlation_id_ctx.get()
             ),
             settings.REGISTRATION_QUEUE_NAME
@@ -61,7 +58,7 @@ async def start_registration(message: Message, state: FSMContext):
 
     async with channel_pool.acquire() as channel:  # type: aio_pika.Channel
         user_registration_queue = await channel.declare_queue(
-            settings.USER_REGISTRATION_QUEUE_TEMPLATE.format(telegram_user_id=message.from_user.id),
+            settings.USER_REGISTRATION_QUEUE_TEMPLATE.format(telegram_id=message.from_user.id),
             durable=True,
         )
 
@@ -70,12 +67,13 @@ async def start_registration(message: Message, state: FSMContext):
             try:
                 registration_response_message = await user_registration_queue.get()
                 registration_flag = msgpack.unpackb(registration_response_message.body)
-
-                if not registration_flag:
-                    await message.answer(msg.ALREADY_REGISTER)
-                    return
+                break
             except QueueEmpty:
                 await asyncio.sleep(1)
+
+        if not registration_flag['flag']:
+            await message.answer(msg.ALREADY_REGISTER)
+            return
 
     await state.set_state(Registration.full_name)
     await message.answer(msg.ENTER_FULL_NAME)
@@ -161,9 +159,9 @@ async def enter_room_number(message: Message, state: FSMContext):
     await state.set_state('')
     # await state.clear()
 
-    registration_data = RegistrationData(
-        telegram_user_id=data['telegram_user_id'],
-        telegram_user_username=data['telegram_user_username'],
+    registration_message = RegistrationMessage(
+        event='registration',
+        telegram_id=data['telegram_id'],
         full_name=data['full_name'],
         phone_number=data['phone_number'],
         room=f"0{data['building']}-0{data['entrance']}-{data['room_number']}"
@@ -177,26 +175,8 @@ async def enter_room_number(message: Message, state: FSMContext):
 
         await registration_exchange.publish(
             aio_pika.Message(
-                msgpack.packb(registration_data),
+                msgpack.packb(registration_message),
                 # correlation_id=correlation_id_ctx.get()
             ),
             settings.REGISTRATION_QUEUE_NAME
         )
-
-    async with channel_pool.acquire() as channel:  # type: aio_pika.Channel
-        user_registration_queue = await channel.declare_queue(
-            settings.USER_REGISTRATION_QUEUE_TEMPLATE.format(telegram_user_id=message.from_user.id),
-            durable=True,
-        )
-
-        retries = 3
-        for _ in range(retries):
-            try:
-                packed_registration_response_message = await user_registration_queue.get(no_ack=True)
-                registration_response_message = msgpack.unpackb(packed_registration_response_message.body)
-
-                answer = msg.SUCCESS_REGISTER if registration_response_message else msg.ALREADY_REGISTER
-                await message.answer(answer)
-                return
-            except QueueEmpty:
-                await asyncio.sleep(1)

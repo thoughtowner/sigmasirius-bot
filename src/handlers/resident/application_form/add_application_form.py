@@ -12,7 +12,7 @@ from starlette_context import context
 from consumers.application_form_consumer.logger import correlation_id_ctx
 
 from config.settings import settings
-from consumers.application_form_consumer.schema.application_form_data import ApplicationFormData
+from src.schema.add_application_form import AddApplicationFormMessage
 from src.states.add_application_form import AddApplicationForm
 from ..router import router
 from src.validators.add_application_form.validators import TitleValidator, DescriptionValidator
@@ -37,8 +37,7 @@ logging.config.dictConfig(LOGGING_CONFIG)
 
 @router.message(F.text == ADD_APPLICATION_FORM)
 async def start_add_application_form(message: Message, state: FSMContext):
-    await state.update_data(telegram_user_id=message.from_user.id)
-    await state.update_data(telegram_user_username=message.from_user.username)
+    await state.update_data(telegram_id=message.from_user.id)
     await state.set_state(AddApplicationForm.title)
     await message.answer(msg.ENTER_TITLE)
 
@@ -84,11 +83,10 @@ async def upload_photo(message: Message, state: FSMContext):
     await state.set_state('')
     # await state.clear()
 
-    application_form_data = ApplicationFormData(
+    application_form_message = AddApplicationFormMessage(
         event='application_form',
         action='add_application_form',
-        telegram_user_id=data['telegram_user_id'],
-        telegram_user_username=data['telegram_user_username'],
+        telegram_id=data['telegram_id'],
         title=data['title'],
         description=data['description'],
         photo_title=data['photo_title'],
@@ -103,7 +101,7 @@ async def upload_photo(message: Message, state: FSMContext):
 
         await application_form_exchange.publish(
             aio_pika.Message(
-                msgpack.packb(application_form_data),
+                msgpack.packb(application_form_message),
                 # correlation_id=correlation_id_ctx.get()
             ),
             settings.APPLICATION_FORM_QUEUE_NAME

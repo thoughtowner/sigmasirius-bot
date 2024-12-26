@@ -6,17 +6,20 @@ import msgpack
 from logger import LOGGING_CONFIG, logger, correlation_id_ctx
 from storage.rabbit import channel_pool
 
-from ..mappers import from_registration_data_to_user, from_registration_data_to_resident_additional_data, from_registration_data_to_role
+from .mappers import get_user, get_resident_additional_data, get_admin_additional_data
 from config.settings import settings
 from storage.db import async_session
 
 from aio_pika import ExchangeType
 from sqlalchemy.exc import IntegrityError
 
-from consumers.model.models import User, Role, ResidentAdditionalData, UserRole
+from .model.models import User, Role, ResidentAdditionalData, UserRole
 from sqlalchemy import select, insert, and_
 
 from .metrics import TOTAL_RECEIVED_MESSAGES
+
+from .handlers.check_registration import handle_check_registration_event
+from .handlers.registration import handle_registration_event
 
 
 async def registration_consumer() -> None:
@@ -34,89 +37,12 @@ async def registration_consumer() -> None:
             async for message in queue_iter: # type: aio_pika.Message
                 TOTAL_RECEIVED_MESSAGES.inc()
                 async with message.process():
-                    try:
-                        # correlation_id_ctx.set(message.correlation_id)
-                        registration_data = msgpack.unpackb(message.body)
-                        logger.info("Received message %s", registration_data)
+                    # correlation_id_ctx.set(message.correlation_id)
 
-                        user_instance = from_registration_data_to_user(registration_data)
-                        resident_additional_data_instance = from_registration_data_to_resident_additional_data(registration_data)
+                    body = msgpack.unpackb(message.body)
+                    logger.info("Received message %s", body)
 
-                        if registration_data['full_name'] == 'check_registration':
-                            async with async_session() as db:
-                                user_id_query = await db.execute(
-                                    select(User.id).filter(User.telegram_user_id == user_instance.telegram_user_id))
-                                user_id = user_id_query.scalar()
-
-                                resident_role_id_query = await db.execute(
-                                    select(Role.id).filter(Role.title == 'resident'))
-                                resident_role_id = resident_role_id_query.scalar()
-
-                                user_role_query = await db.execute(
-                                    select(UserRole).where(and_(UserRole.user_id == user_id, UserRole.role_id == resident_role_id)))
-                                user_role_result = user_role_query.all()
-
-                                if user_role_result:
-                                    logger.info("This user with this data is already registered: %s", registration_data)
-                                    async with channel_pool.acquire() as _channel:
-                                        registration_exchange = await _channel.declare_exchange("registration_exchange", ExchangeType.DIRECT, durable=True)
-                                        user_registration_queue = await _channel.declare_queue(
-                                            f'user_registration_queue.{registration_data["telegram_user_id"]}',
-                                            durable=True,
-                                        )
-                                        await user_registration_queue.bind(
-                                            registration_exchange,
-                                            settings.USER_REGISTRATION_QUEUE_TEMPLATE.format(
-                                                telegram_user_id=registration_data['telegram_user_id']
-                                            )
-                                        )
-                                        await registration_exchange.publish(
-                                            aio_pika.Message(msgpack.packb(False)),
-                                            settings.USER_REGISTRATION_QUEUE_TEMPLATE.format(
-                                                telegram_user_id=registration_data['telegram_user_id']
-                                            )
-                                        )
-
-                        else:
-                            async with async_session() as db:
-                                user_result = await db.execute(
-                                    select(User.id).filter(User.telegram_user_id == user_instance.telegram_user_id))
-                                user_id = user_result.scalar()
-
-                                resident_role_id_query = await db.execute(
-                                    select(Role.id).filter(Role.title == 'resident'))
-                                resident_role_id = resident_role_id_query.scalar()
-
-                                await db.execute(insert(UserRole).values(
-                                    user_id=user_id,
-                                    role_id=resident_role_id
-                                ))
-
-                                await db.flush()
-
-                                await db.execute(insert(ResidentAdditionalData).values(
-                                    full_name=resident_additional_data_instance.full_name,
-                                    phone_number=resident_additional_data_instance.phone_number,
-                                    room=resident_additional_data_instance.room,
-                                    user_id=user_id
-                                ))
-
-                                await db.commit()
-
-                                async with channel_pool.acquire() as _channel:
-                                    registration_exchange = await _channel.get_exchange('registration_exchange')
-                                    user_registration_queue = await _channel.declare_queue(
-                                        f'user_registration_queue.{registration_data["telegram_user_id"]}',
-                                        durable=True
-                                    )
-                                    await user_registration_queue.bind(
-                                        registration_exchange,
-                                        f'user_registration_queue.{registration_data["telegram_user_id"]}'
-                                    )
-                                    await registration_exchange.publish(
-                                        aio_pika.Message(msgpack.packb(True)),
-                                        f'user_registration_queue.{registration_data["telegram_user_id"]}'
-                                    )
-
-                    except IntegrityError as e:
-                        print(e)
+                    if body['event'] == 'check_registration':
+                        await handle_check_registration_event(body)
+                    elif body['event'] == 'registration':
+                        await handle_registration_event(body)

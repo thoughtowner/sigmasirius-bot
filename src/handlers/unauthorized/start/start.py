@@ -9,11 +9,9 @@ from aio_pika import ExchangeType
 from starlette_context.header_keys import HeaderKeys
 from starlette_context import context
 
-from consumers.start_consumer.logger import correlation_id_ctx
-
 from config.settings import settings
-from consumers.start_consumer.schema.start_data import StartData
-from .router import router
+from src.schema.start import StartMessage
+from ..router import router
 from src.messages import start as msg
 from src.commands import START
 from src.logger import LOGGING_CONFIG, logger
@@ -31,13 +29,12 @@ async def start(message: Message, state: FSMContext):
     await state.clear()
     await state.update_data(state_data)
 
-    await state.update_data(telegram_user_id=message.from_user.id)
-    await state.update_data(telegram_user_username=message.from_user.username)
+    await state.update_data(telegram_id=message.from_user.id)
     data = await state.get_data()
 
-    start_data = StartData(
-        telegram_user_id=data['telegram_user_id'],
-        telegram_user_username=data['telegram_user_username']
+    start_message = StartMessage(
+        event='start',
+        telegram_id=data['telegram_id'],
     )
 
     async with channel_pool.acquire() as channel:  # type: aio_pika.Channel
@@ -48,7 +45,7 @@ async def start(message: Message, state: FSMContext):
 
         await start_exchange.publish(
             aio_pika.Message(
-                msgpack.packb(start_data),
+                msgpack.packb(start_message),
                 # correlation_id=correlation_id_ctx.get()
             ),
             settings.START_QUEUE_NAME

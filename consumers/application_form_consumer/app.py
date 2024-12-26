@@ -6,8 +6,8 @@ import msgpack
 from logger import LOGGING_CONFIG, logger, correlation_id_ctx
 from storage.rabbit import channel_pool
 
-from consumers.application_form_consumer.handlers.application_form import handle_application_form_event
-from consumers.application_form_consumer.handlers.application_form_new_status import handle_application_form_new_status_event
+from .handlers.add_application_form import handle_add_application_form_event
+from .handlers.change_application_form_status import handle_change_application_form_status_event
 
 from .metrics import TOTAL_RECEIVED_MESSAGES
 
@@ -32,7 +32,7 @@ async def application_form_consumer() -> None:
                     body = msgpack.unpackb(message.body)
                     logger.info("Received message %s", body)
 
-                    if body['event'] == 'application_form':
-                        await handle_application_form_event(body)
-                    elif body['event'] == 'application_form_new_status':
-                        await handle_application_form_new_status_event(body)
+                    if body['event'] == 'add_application_form':
+                        await handle_add_application_form_event(body)
+                    elif body['event'] == 'change_application_form_status':
+                        await handle_change_application_form_status_event(body)
