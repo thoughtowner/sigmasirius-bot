@@ -5,10 +5,11 @@ from ..storage.db import async_session
 from aio_pika import ExchangeType
 from sqlalchemy.exc import IntegrityError
 
-from ..model.models import User, Role, ApplicationForm, ResidentAdditionalData, ApplicationFormStatus, UserRole
+from ..model.models import User, Role, ApplicationForm, ResidentAdditionalData, ApplicationFormStatus, UserRole, TelegramIdAndMessageId
 from sqlalchemy import insert, select
 
 from ..schema.application_form_for_admin import ApplicationFormForAdminMessage
+from ..schema.application_form_for_resident import ApplicationFormForResidentMessage
 
 from aiogram import Bot
 from aiogram.client.default import DefaultBotProperties
@@ -50,37 +51,38 @@ async def handle_add_application_form_event(message): # TODO async def handle_ap
 
         await db.commit()
 
-        application_form_for_admins_query = (
+        application_form_for_admin_query = (
             select(
-                User.telegram_id,
                 ResidentAdditionalData.full_name,
                 ResidentAdditionalData.phone_number,
                 ResidentAdditionalData.room,
-                ApplicationForm.id,
                 ApplicationForm.title,
                 ApplicationForm.description,
                 ApplicationFormStatus.title
             )
+            .select_from(User)
             .join(ResidentAdditionalData, ResidentAdditionalData.user_id == User.id)
             .join(ApplicationForm, ApplicationForm.user_id == User.id)
             .join(ApplicationFormStatus, ApplicationFormStatus.id == ApplicationForm.status_id)
             .where(ApplicationForm.id == application_form_id)
         )
-        application_form_for_admins_result = await db.execute(application_form_for_admins_query)
-        application_form_for_admins = application_form_for_admins_result.fetchone()
+        application_form_for_admin_result = await db.execute(application_form_for_admin_query)
+        application_form_for_admin = application_form_for_admin_result.fetchone()
 
-        parsed_application_form_for_admins = ApplicationFormForAdminMessage(
-            telegram_id=application_form_for_admins[0],
-            resident_full_name=application_form_for_admins[1],
-            resident_phone_number=application_form_for_admins[2],
-            resident_room=application_form_for_admins[3],
-            application_form_id=str(application_form_for_admins[4]),
-            title=application_form_for_admins[5],
-            description=application_form_for_admins[6],
-            status=application_form_for_admins[7]
+        parsed_application_form_for_admin = ApplicationFormForAdminMessage(
+            resident_full_name=application_form_for_admin[0],
+            resident_phone_number=application_form_for_admin[1],
+            resident_room=application_form_for_admin[2],
+            title=application_form_for_admin[3],
+            description=application_form_for_admin[4],
+            status=application_form_for_admin[5]
         )
 
-        # for_resident
+        parsed_application_form_for_resident = ApplicationFormForResidentMessage(
+            title=application_form_for_admin[3],
+            description=application_form_for_admin[4],
+            status=application_form_for_admin[5]
+        )
 
         admin_role_id_result = await db.execute(
             select(Role.id).filter(Role.title == 'admin')
@@ -94,62 +96,46 @@ async def handle_add_application_form_event(message): # TODO async def handle_ap
         )
         admins_telegram_id = admins_telegram_id_query.scalars().all()
 
-        application_form_for_admins_data = []
+        photo_input_file = BufferedInputFile(images_storage.get_file(message['photo_title']), message['photo_title'])
+
+        take_for_processing_btn = InlineKeyboardButton(text='Взять в обработку', callback_data='take_application_form_for_processing')
+        cancel_btn = InlineKeyboardButton(text='Отменить', callback_data='cancel_application_form')
+        markup = InlineKeyboardMarkup(
+            inline_keyboard=[[take_for_processing_btn], [cancel_btn]]
+        )
+
         for admin_telegram_id in admins_telegram_id:
-            photo_input_file = BufferedInputFile(images_storage.get_file(message['photo_title']),
-                                                 message['photo_title'])
-
-            take_for_processing_btn = InlineKeyboardButton(text='Взять в обработку',
-                                                           callback_data='take_for_processing')
-            cancel_btn = InlineKeyboardButton(text='Отменить', callback_data='cancel')
-            markup = InlineKeyboardMarkup(
-                inline_keyboard=[[take_for_processing_btn], [cancel_btn]]
-            )
-
-            application_form_for_admins_message = await bot.send_photo(
+            application_form_for_admin_message = await bot.send_photo(
                 photo=photo_input_file,
                 caption=render(
-                    'application_form_for_admins/application_form_for_admins.jinja2',
-                    application_form_for_admins=parsed_application_form_for_admins
+                    'application_form/application_form_for_admin.jinja2',
+                    body=parsed_application_form_for_admin
                 ),
                 reply_markup=markup,
                 chat_id=admin_telegram_id
             )
 
-            application_form_for_admins_data.append(
-                {
-                    'chat_id': admin_telegram_id,
-                    'message_id': application_form_for_admins_message.message_id
-                }
-            )
+            await db.execute(insert(TelegramIdAndMessageId).values(
+                telegram_id=admin_telegram_id,
+                message_id=application_form_for_admin_message.message_id,
+                application_form_id=application_form_id
+            ))
 
-        photo_input_file = BufferedInputFile(images_storage.get_file(message['photo_title']),
-                                             message['photo_title'])
+            await db.flush()
 
-        application_form_for_owner_message = await bot.send_photo(
+        application_form_for_resident_message = await bot.send_photo(
             photo=photo_input_file,
             caption=render(
-                'application_form_for_admins/application_form_for_admins.jinja2',
-                application_form_for_admins=parsed_application_form_for_admins
+                'application_form/application_form_for_resident.jinja2',
+                body=parsed_application_form_for_resident
             ),
-            chat_id=parsed_application_form_for_admins['telegram_id']
+            chat_id=message['telegram_id']
         )
 
-        application_form_for_owner_data = {
-            'chat_id': parsed_application_form_for_admins['telegram_id'],
-            'message_id': application_form_for_owner_message.message_id
-        }
+        await db.execute(insert(TelegramIdAndMessageId).values(
+            telegram_id=message['telegram_id'],
+            message_id=application_form_for_resident_message.message_id,
+            application_form_id=application_form_id
+        ))
 
-        async with channel_pool.acquire() as _channel:
-            application_form_for_admins_exchange = await _channel.declare_exchange('application_form_for_admins_exchange')
-            application_form_for_admins_queue = await _channel.declare_queue('application_form_for_admins_queue', durable=True)
-            await application_form_for_admins_queue.bind(application_form_for_admins_exchange, 'application_form_for_admins_queue')
-            await application_form_for_admins_exchange.publish(aio_pika.Message(msgpack.packb(
-                {
-                    'application_form_for_user_data': {
-                        'admins': application_form_for_admins_data,
-                        'owner': application_form_for_owner_data
-                    },
-                    'application_form_id': parsed_application_form_for_admins['application_form_id']
-                }
-            )), 'application_form_for_admins_queue')
+        await db.commit()

@@ -24,64 +24,20 @@ from aio_pika import ExchangeType
 default = DefaultBotProperties(parse_mode=ParseMode.HTML)
 bot = Bot(token=settings.BOT_TOKEN, default=default)
 
-@router.callback_query(lambda callback_query: callback_query.data == 'complete')
-async def complete(callback_query: CallbackQuery, state: FSMContext) -> None:
+@router.callback_query(lambda callback_query: callback_query.data == 'complete_application_form')
+async def complete_application_form(callback_query: CallbackQuery, state: FSMContext) -> None:
     telegram_id = callback_query.from_user.id
     message_id = callback_query.message.message_id
 
+    # state_data = await state.get_data()
+    # for i, application_form_id_and_message_ids in enumerate(state_data['application_form_ids_and_message_ids']):
+    #     if state_application_form_data['clicked_admin_data']['chat_id'] == telegram_id and state_application_form_data['clicked_admin_data']['message_id'] == message_id:
+    #         del state_application_forms_data['application_form'][i]
+    #         break
+    # await state.update_data(application_forms_data=state_application_forms_data)
+
     async with channel_pool.acquire() as channel:  # type: aio_pika.Channel
         logger.info('Send data to application_form queue...')
-
-        async with channel_pool.acquire() as _channel:  # type: aio_pika.Channel
-            application_form_for_admins_queue = await _channel.declare_queue('application_form_for_admins_queue', durable=True)
-
-            unacked_messages = []
-
-            retries = 3
-            for _ in range(retries):
-                try:
-                    is_consume_needed_message_from_queue = False
-                    while not is_consume_needed_message_from_queue:
-                        try:
-                            packed_application_form_for_admins_response_message = await application_form_for_admins_queue.get()
-                            application_form_for_admins_response_message = msgpack.unpackb(packed_application_form_for_admins_response_message.body)
-
-                            application_form_for_admins_data = application_form_for_admins_response_message['application_form_for_user_data']['admins']
-
-                            for application_form_for_admin_data in application_form_for_admins_data:
-                                if application_form_for_admin_data['chat_id'] == telegram_id and application_form_for_admin_data['message_id'] == message_id:
-                                    await packed_application_form_for_admins_response_message.ack()
-                                    is_consume_needed_message_from_queue = True
-                                    break
-
-                            if not is_consume_needed_message_from_queue:
-                                unacked_messages.append(packed_application_form_for_admins_response_message)
-
-                        except QueueEmpty:
-                            pass
-
-                except QueueEmpty:
-                    await asyncio.sleep(1)
-                finally:
-                    if is_consume_needed_message_from_queue:
-                        break
-
-            if not is_consume_needed_message_from_queue:
-                await callback_query.message.answer('Что-то пошло не так')
-
-            for unacked_message in unacked_messages:
-                await unacked_message.nack(requeue=True)
-
-            application_form_for_owner_data = application_form_for_admins_response_message['application_form_for_user_data']['owner']
-            application_form_id = application_form_for_admins_response_message['application_form_id']
-
-        state_application_forms_data = await state.get_data()
-        for i, state_application_form_data in enumerate(state_application_forms_data['application_form']):
-            if state_application_form_data['clicked_admin_data']['chat_id'] == telegram_id and state_application_form_data['clicked_admin_data']['message_id'] == message_id:
-                del state_application_forms_data['application_form'][i]
-                break
-
-        await state.update_data(application_forms_data=state_application_forms_data)
 
         application_form_exchange = await channel.declare_exchange(settings.APPLICATION_FORM_EXCHANGE_NAME, ExchangeType.DIRECT, durable=True)
         application_form_queue = await channel.declare_queue(settings.APPLICATION_FORM_QUEUE_NAME, durable=True)
@@ -93,13 +49,9 @@ async def complete(callback_query: CallbackQuery, state: FSMContext) -> None:
                     {
                         'event': 'change_application_form_status',
                         'action': 'complete_application_form',
-                        'clicked_admin_telegram_id': telegram_id,
-                        'clicked_admin_message_id': message_id,
-                        'owner_telegram_id': application_form_for_owner_data['chat_id'],
-                        'owner_message_id': application_form_for_owner_data['message_id'],
-                        'application_form_id': application_form_id,
-                        'new_status': 'completed',
-                        'application_form_for_admins_response_message': application_form_for_admins_response_message
+                        'working_admin_telegram_id': telegram_id,
+                        'working_admin_message_id': message_id,
+                        'new_status': 'completed'
                     }
                 ),
                 # correlation_id=correlation_id_ctx.get()

@@ -5,10 +5,11 @@ from ..storage.db import async_session
 from aio_pika import ExchangeType
 from sqlalchemy.exc import IntegrityError
 
-from ..model.models import User, Role, ApplicationForm, ResidentAdditionalData, ApplicationFormStatus, UserRole
-from sqlalchemy import insert, select, update
+from ..model.models import User, Role, ApplicationForm, ResidentAdditionalData, ApplicationFormStatus, UserRole, TelegramIdAndMessageId
+from sqlalchemy import insert, select, update, and_
 
 from ..schema.application_form_for_admin import ApplicationFormForAdminMessage
+from ..schema.application_form_for_resident import ApplicationFormForResidentMessage
 
 from aiogram import Bot
 from aiogram.client.default import DefaultBotProperties
@@ -26,237 +27,253 @@ bot = Bot(token=settings.BOT_TOKEN, default=default)
 
 async def handle_change_application_form_status_event(message): # TODO async def handle_application_form_event(message: ApplicationFormStatusMessage)
     if message['action'] == 'take_application_form_for_processing':
-        clicked_admin_telegram_id = message['clicked_admin_telegram_id']
-        clicked_admin_message_id = message['clicked_admin_message_id']
-        owner_telegram_id = message['owner_telegram_id']
-        owner_message_id = message['owner_message_id']
-        application_form_id = message['application_form_id']
-        new_status = message['new_status']
-        application_form_for_admins_response_message = message['application_form_for_admins_response_message']
+        async with async_session() as db:
+            new_status_result = await db.execute(select(ApplicationFormStatus.id).filter(ApplicationFormStatus.title == message['new_status']))
+            new_status_id = new_status_result.scalar()
 
-        try:
-            async with async_session() as db:
-                new_status_result = await db.execute(select(ApplicationFormStatus.id).filter(ApplicationFormStatus.title == new_status))
-                new_status_id = new_status_result.scalar()
+            application_form_id_result = await db.execute(
+                select(TelegramIdAndMessageId.application_form_id).filter(and_(
+                    TelegramIdAndMessageId.telegram_id == message['working_admin_telegram_id'],
+                    TelegramIdAndMessageId.message_id == message['working_admin_message_id']
+                ))
+            )
+            application_form_id = application_form_id_result.scalar()
 
-                await db.execute(
-                    update(ApplicationForm).
-                    where(ApplicationForm.id == application_form_id).
-                    values(status_id=new_status_id)
+            await db.execute(
+                update(ApplicationForm).
+                where(ApplicationForm.id == application_form_id).
+                values(status_id=new_status_id)
+            )
+            await db.commit()
+
+            application_form_for_admin_query = await db.execute(
+                select(
+                    ResidentAdditionalData.full_name,
+                    ResidentAdditionalData.phone_number,
+                    ResidentAdditionalData.room,
+                    ApplicationForm.title,
+                    ApplicationForm.description,
+                    ApplicationFormStatus.title
                 )
-                await db.commit()
+                .select_from(User)
+                .join(ResidentAdditionalData, ResidentAdditionalData.user_id == User.id)
+                .join(ApplicationForm, ApplicationForm.user_id == User.id)
+                .join(ApplicationFormStatus, ApplicationFormStatus.id == ApplicationForm.status_id)
+                .where(ApplicationForm.id == application_form_id)
+            )
+            application_form_for_admin = application_form_for_admin_query.fetchone()
 
-                application_form_for_admins_query = (
-                    select(
-                        User.telegram_id,
-                        ResidentAdditionalData.full_name,
-                        ResidentAdditionalData.phone_number,
-                        ResidentAdditionalData.room,
-                        ApplicationForm.id,
-                        ApplicationForm.title,
-                        ApplicationForm.description,
-                        ApplicationFormStatus.title
+            parsed_application_form_for_admin = ApplicationFormForAdminMessage(
+                resident_full_name=application_form_for_admin[0],
+                resident_phone_number=application_form_for_admin[1],
+                resident_room=application_form_for_admin[2],
+                title=application_form_for_admin[3],
+                description=application_form_for_admin[4],
+                status=application_form_for_admin[5]
+            )
+
+            parsed_application_form_for_resident = ApplicationFormForResidentMessage(
+                title=application_form_for_admin[3],
+                description=application_form_for_admin[4],
+                status=application_form_for_admin[5]
+            )
+
+            resident_telegram_id_and_message_id_query = await db.execute(
+                select(
+                    TelegramIdAndMessageId.telegram_id,
+                    TelegramIdAndMessageId.message_id
+                )
+                .join(User, User.telegram_id == TelegramIdAndMessageId.telegram_id)
+                .join(ApplicationForm, ApplicationForm.id == TelegramIdAndMessageId.application_form_id)
+                .where(ApplicationForm.id == application_form_id)
+            )
+            resident_telegram_id_and_message_id = resident_telegram_id_and_message_id_query.fetchone()
+
+            parsed_resident_telegram_id_and_message_id = {
+                'telegram_id': resident_telegram_id_and_message_id[0],
+                'message_id': resident_telegram_id_and_message_id[1]
+            }
+
+            admins_telegram_ids_and_message_ids_query = await db.execute(
+                select(TelegramIdAndMessageId.telegram_id, TelegramIdAndMessageId.message_id)
+                .filter(TelegramIdAndMessageId.application_form_id == application_form_id)
+            )
+            admins_telegram_ids_and_message_ids = admins_telegram_ids_and_message_ids_query.all()
+
+            for admins_telegram_id_and_message_id in admins_telegram_ids_and_message_ids:
+                if admins_telegram_id_and_message_id[0] == message['working_admin_telegram_id']:
+                    await bot.edit_message_caption(
+                        caption=render(
+                            'application_form/application_form_for_admin.jinja2',
+                            body=parsed_application_form_for_admin
+                        ),
+                        chat_id=admins_telegram_id_and_message_id[0],
+                        message_id=admins_telegram_id_and_message_id[1]
                     )
-                    .join(ResidentAdditionalData, ResidentAdditionalData.user_id == User.id)
-                    .join(ApplicationForm, ApplicationForm.user_id == User.id)
-                    .join(ApplicationFormStatus, ApplicationFormStatus.id == ApplicationForm.status_id)
-                    .where(ApplicationForm.id == application_form_id)
-                )
 
-                application_form_for_admins_result = await db.execute(application_form_for_admins_query)
-                application_form_for_admins = application_form_for_admins_result.fetchone()
+                    complete_btn = InlineKeyboardButton(text='Выполнить', callback_data='complete_application_form')
+                    new_markup = InlineKeyboardMarkup(
+                        inline_keyboard=[[complete_btn]]
+                    )
 
-                parsed_application_form_for_admins = ApplicationFormForAdminMessage(
-                    telegram_id=application_form_for_admins[0],
-                    resident_full_name=application_form_for_admins[1],
-                    resident_phone_number=application_form_for_admins[2],
-                    resident_room=application_form_for_admins[3],
-                    application_form_id=str(application_form_for_admins[4]),
-                    title=application_form_for_admins[5],
-                    description=application_form_for_admins[6],
-                    status=application_form_for_admins[7]
-                )
+                    await bot.edit_message_reply_markup(
+                        reply_markup=new_markup,
+                        chat_id=admins_telegram_id_and_message_id[0],
+                        message_id=admins_telegram_id_and_message_id[1]
+                    )
+                else:
+                    await bot.delete_message(
+                        chat_id=admins_telegram_id_and_message_id[0],
+                        message_id=admins_telegram_id_and_message_id[1]
+                    )
 
-                for application_form_for_admin_data in application_form_for_admins_response_message['application_form_for_user_data']['admins']:
-                    if application_form_for_admin_data['chat_id'] == clicked_admin_telegram_id and application_form_for_admin_data['message_id'] == clicked_admin_message_id:
-                        await bot.edit_message_caption(
-                            caption=render(
-                                'application_form_for_admins/application_form_for_admins.jinja2',
-                                application_form_for_admins=parsed_application_form_for_admins
-                            ),
-                            chat_id=application_form_for_admin_data['chat_id'],
-                            message_id=application_form_for_admin_data['message_id']
-                        )
-
-                        complete_btn = InlineKeyboardButton(text='Выполнить', callback_data='complete')
-                        new_markup = InlineKeyboardMarkup(
-                            inline_keyboard=[[complete_btn]]
-                        )
-
-                        await bot.edit_message_reply_markup(
-                            chat_id=application_form_for_admin_data['chat_id'],
-                            message_id=application_form_for_admin_data['message_id'],
-                            reply_markup=new_markup
-                        )
-
-                    else:
-                        await bot.delete_message(chat_id=application_form_for_admin_data['chat_id'], message_id=application_form_for_admin_data['message_id'])
-
-                await bot.edit_message_caption(
-                    caption=render(
-                        'application_form_for_admins/application_form_for_admins.jinja2',
-                        application_form_for_admins=parsed_application_form_for_admins
-                    ),
-                    chat_id=owner_telegram_id,
-                    message_id=owner_message_id
-                )
-
-        except IntegrityError as e:
-            print(e)
-            await bot.send_message(
-                text='При отправке заявки что-то пошло не так!',
-                chat_id=clicked_admin_telegram_id
+            await bot.edit_message_caption(
+                caption=render(
+                    'application_form/application_form_for_resident.jinja2',
+                    application_form_for_admins=parsed_application_form_for_resident
+                ),
+                chat_id=parsed_resident_telegram_id_and_message_id['telegram_id'],
+                message_id=parsed_resident_telegram_id_and_message_id['message_id']
             )
 
     elif message['action'] == 'complete_application_form':
-        clicked_admin_telegram_id = message['clicked_admin_telegram_id']
-        clicked_admin_message_id = message['clicked_admin_message_id']
-        owner_telegram_id = message['owner_telegram_id']
-        owner_message_id = message['owner_message_id']
-        application_form_id = message['application_form_id']
-        new_status = message['new_status']
-        application_form_for_admins_response_message = message['application_form_for_admins_response_message']
+        async with async_session() as db:
+            new_status_result = await db.execute(
+                select(ApplicationFormStatus.id).filter(ApplicationFormStatus.title == message['new_status']))
+            new_status_id = new_status_result.scalar()
 
-        try:
-            async with async_session() as db:
-                new_status_result = await db.execute(select(ApplicationFormStatus.id).filter(ApplicationFormStatus.title == new_status))
-                new_status_id = new_status_result.scalar()
+            application_form_id_result = await db.execute(
+                select(TelegramIdAndMessageId.application_form_id).filter(and_(
+                    TelegramIdAndMessageId.telegram_id == message['working_admin_telegram_id'],
+                    TelegramIdAndMessageId.message_id == message['working_admin_message_id']
+                ))
+            )
+            application_form_id = application_form_id_result.scalar()
 
-                await db.execute(
-                    update(ApplicationForm).
-                    where(ApplicationForm.id == application_form_id).
-                    values(status_id=new_status_id)
+            await db.execute(
+                update(ApplicationForm).
+                where(ApplicationForm.id == application_form_id).
+                values(status_id=new_status_id)
+            )
+            await db.commit()
+
+            application_form_for_resident_query = await db.execute(
+                select(
+                    ApplicationForm.title,
+                    ApplicationForm.description,
+                    ApplicationFormStatus.title
                 )
-                await db.commit()
+                .select_from(User)
+                .join(ResidentAdditionalData, ResidentAdditionalData.user_id == User.id)
+                .join(ApplicationForm, ApplicationForm.user_id == User.id)
+                .join(ApplicationFormStatus, ApplicationFormStatus.id == ApplicationForm.status_id)
+                .where(ApplicationForm.id == application_form_id)
+            )
+            application_form_for_resident = application_form_for_resident_query.fetchone()
 
-                application_form_for_admins_query = (
-                    select(
-                        User.telegram_id,
-                        ResidentAdditionalData.full_name,
-                        ResidentAdditionalData.phone_number,
-                        ResidentAdditionalData.room,
-                        ApplicationForm.id,
-                        ApplicationForm.title,
-                        ApplicationForm.description,
-                        ApplicationFormStatus.title
-                    )
-                    .join(ResidentAdditionalData, ResidentAdditionalData.user_id == User.id)
-                    .join(ApplicationForm, ApplicationForm.user_id == User.id)
-                    .join(ApplicationFormStatus, ApplicationFormStatus.id == ApplicationForm.status_id)
-                    .where(ApplicationForm.id == application_form_id)
+            parsed_application_form_for_resident = ApplicationFormForResidentMessage(
+                title=application_form_for_resident[0],
+                description=application_form_for_resident[1],
+                status=application_form_for_resident[2]
+            )
+
+            resident_telegram_id_and_message_id_query = await db.execute(
+                select(
+                    TelegramIdAndMessageId.telegram_id,
+                    TelegramIdAndMessageId.message_id
                 )
+                .join(User, User.telegram_id == TelegramIdAndMessageId.telegram_id)
+                .join(ApplicationForm, ApplicationForm.id == TelegramIdAndMessageId.application_form_id)
+                .where(ApplicationForm.id == application_form_id)
+            )
+            resident_telegram_id_and_message_id = resident_telegram_id_and_message_id_query.fetchone()
 
-                application_form_for_admins_result = await db.execute(application_form_for_admins_query)
-                application_form_for_admins = application_form_for_admins_result.fetchone()
+            parsed_resident_telegram_id_and_message_id = {
+                'telegram_id': resident_telegram_id_and_message_id[0],
+                'message_id': resident_telegram_id_and_message_id[1]
+            }
 
-                parsed_application_form_for_admins = ApplicationFormForAdminMessage(
-                    telegram_id=application_form_for_admins[0],
-                    resident_full_name=application_form_for_admins[1],
-                    resident_phone_number=application_form_for_admins[2],
-                    resident_room=application_form_for_admins[3],
-                    application_form_id=str(application_form_for_admins[4]),
-                    title=application_form_for_admins[5],
-                    description=application_form_for_admins[6],
-                    status=application_form_for_admins[7]
-                )
+            await bot.delete_message(
+                chat_id=message['working_admin_telegram_id'],
+                message_id=message['working_admin_message_id']
+            )
 
-                for application_form_for_admin_data in application_form_for_admins_response_message['application_form_for_user_data']['admins']:
-                    if application_form_for_admin_data['chat_id'] == clicked_admin_telegram_id and application_form_for_admin_data['message_id'] == clicked_admin_message_id:
-                        await bot.delete_message(chat_id=application_form_for_admin_data['chat_id'], message_id=application_form_for_admin_data['message_id'])
-
-                await bot.edit_message_caption(
-                    caption=render(
-                        'application_form_for_admins/application_form_for_admins.jinja2',
-                        application_form_for_admins=parsed_application_form_for_admins
-                    ),
-                    chat_id=owner_telegram_id,
-                    message_id=owner_message_id
-                )
-
-        except IntegrityError as e:
-            print(e)
-            await bot.send_message(
-                text='При отправке заявки что-то пошло не так!',
-                chat_id=clicked_admin_telegram_id
+            await bot.edit_message_caption(
+                caption=render(
+                    'application_form/application_form_for_resident.jinja2',
+                    body=parsed_application_form_for_resident
+                ),
+                chat_id=parsed_resident_telegram_id_and_message_id['telegram_id'],
+                message_id=parsed_resident_telegram_id_and_message_id['message_id']
             )
 
     elif message['action'] == 'cancel_application_form':
-        clicked_admin_telegram_id = message['clicked_admin_telegram_id']
-        clicked_admin_message_id = message['clicked_admin_message_id']
-        owner_telegram_id = message['owner_telegram_id']
-        owner_message_id = message['owner_message_id']
-        application_form_id = message['application_form_id']
-        new_status = message['new_status']
-        application_form_for_admins_response_message = message['application_form_for_admins_response_message']
+        async with async_session() as db:
+            new_status_result = await db.execute(
+                select(ApplicationFormStatus.id).filter(ApplicationFormStatus.title == message['new_status']))
+            new_status_id = new_status_result.scalar()
 
-        try:
-            async with async_session() as db:
-                new_status_result = await db.execute(select(ApplicationFormStatus.id).filter(ApplicationFormStatus.title == new_status))
-                new_status_id = new_status_result.scalar()
+            application_form_id_result = await db.execute(
+                select(TelegramIdAndMessageId.application_form_id).filter(and_(
+                    TelegramIdAndMessageId.telegram_id == message['working_admin_telegram_id'],
+                    TelegramIdAndMessageId.message_id == message['working_admin_message_id']
+                ))
+            )
+            application_form_id = application_form_id_result.scalar()
 
-                await db.execute(
-                    update(ApplicationForm).
-                    where(ApplicationForm.id == application_form_id).
-                    values(status_id=new_status_id)
+            await db.execute(
+                update(ApplicationForm).
+                where(ApplicationForm.id == application_form_id).
+                values(status_id=new_status_id)
+            )
+            await db.commit()
+
+            application_form_for_resident_query = await db.execute(
+                select(
+                    ApplicationForm.title,
+                    ApplicationForm.description,
+                    ApplicationFormStatus.title
                 )
-                await db.commit()
+                .select_from(User)
+                .join(ResidentAdditionalData, ResidentAdditionalData.user_id == User.id)
+                .join(ApplicationForm, ApplicationForm.user_id == User.id)
+                .join(ApplicationFormStatus, ApplicationFormStatus.id == ApplicationForm.status_id)
+                .where(ApplicationForm.id == application_form_id)
+            )
+            application_form_for_resident = application_form_for_resident_query.fetchone()
 
-                application_form_for_admins_query = (
-                    select(
-                        User.telegram_id,
-                        ResidentAdditionalData.full_name,
-                        ResidentAdditionalData.phone_number,
-                        ResidentAdditionalData.room,
-                        ApplicationForm.id,
-                        ApplicationForm.title,
-                        ApplicationForm.description,
-                        ApplicationFormStatus.title
-                    )
-                    .join(ResidentAdditionalData, ResidentAdditionalData.user_id == User.id)
-                    .join(ApplicationForm, ApplicationForm.user_id == User.id)
-                    .join(ApplicationFormStatus, ApplicationFormStatus.id == ApplicationForm.status_id)
-                    .where(ApplicationForm.id == application_form_id)
+            parsed_application_form_for_resident = ApplicationFormForResidentMessage(
+                title=application_form_for_resident[0],
+                description=application_form_for_resident[1],
+                status=application_form_for_resident[2]
+            )
+
+            resident_telegram_id_and_message_id_query = await db.execute(
+                select(
+                    TelegramIdAndMessageId.telegram_id,
+                    TelegramIdAndMessageId.message_id
                 )
+                .join(User, User.telegram_id == TelegramIdAndMessageId.telegram_id)
+                .join(ApplicationForm, ApplicationForm.id == TelegramIdAndMessageId.application_form_id)
+                .where(ApplicationForm.id == application_form_id)
+            )
+            resident_telegram_id_and_message_id = resident_telegram_id_and_message_id_query.fetchone()
 
-                application_form_for_admins_result = await db.execute(application_form_for_admins_query)
-                application_form_for_admins = application_form_for_admins_result.fetchone()
+            parsed_resident_telegram_id_and_message_id = {
+                'telegram_id': resident_telegram_id_and_message_id[0],
+                'message_id': resident_telegram_id_and_message_id[1]
+            }
 
-                parsed_application_form_for_admins = ApplicationFormForAdminMessage(
-                    telegram_id=application_form_for_admins[0],
-                    resident_full_name=application_form_for_admins[1],
-                    resident_phone_number=application_form_for_admins[2],
-                    resident_room=application_form_for_admins[3],
-                    application_form_id=str(application_form_for_admins[4]),
-                    title=application_form_for_admins[5],
-                    description=application_form_for_admins[6],
-                    status=application_form_for_admins[7]
-                )
+            await bot.delete_message(
+                chat_id=message['working_admin_telegram_id'],
+                message_id=message['working_admin_message_id']
+            )
 
-                for application_form_for_admin_data in application_form_for_admins_response_message['application_form_for_user_data']['admins']:
-                    if application_form_for_admin_data['chat_id'] == clicked_admin_telegram_id and application_form_for_admin_data['message_id'] == clicked_admin_message_id:
-                        await bot.delete_message(chat_id=application_form_for_admin_data['chat_id'], message_id=application_form_for_admin_data['message_id'])
-
-                await bot.edit_message_caption(
-                    caption=render(
-                        'application_form_for_admins/application_form_for_admins.jinja2',
-                        application_form_for_admins=parsed_application_form_for_admins
-                    ),
-                    chat_id=owner_telegram_id,
-                    message_id=owner_message_id
-                )
-
-        except IntegrityError:
-            await bot.send_message(
-                text='При отправке заявки что-то пошло не так!',
-                chat_id=clicked_admin_telegram_id
+            await bot.edit_message_caption(
+                caption=render(
+                    'application_form/application_form_for_resident.jinja2',
+                    body=parsed_application_form_for_resident
+                ),
+                chat_id=parsed_resident_telegram_id_and_message_id['telegram_id'],
+                message_id=parsed_resident_telegram_id_and_message_id['message_id']
             )
