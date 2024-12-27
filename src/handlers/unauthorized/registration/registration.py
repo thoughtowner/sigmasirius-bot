@@ -66,12 +66,12 @@ async def start_registration(message: Message, state: FSMContext):
         for _ in range(retries):
             try:
                 registration_response_message = await user_registration_queue.get()
-                registration_flag = msgpack.unpackb(registration_response_message.body)
+                body = msgpack.unpackb(registration_response_message.body)
                 break
             except QueueEmpty:
                 await asyncio.sleep(1)
 
-        if not registration_flag['flag']:
+        if not body['flag']:
             await message.answer(msg.ALREADY_REGISTER)
             return
 
@@ -156,8 +156,9 @@ async def enter_room_number(message: Message, state: FSMContext):
     data = await state.get_data()
     await message.answer(msg.PUSH_DATA_TO_REGISTRATION_QUERY, reply_markup=ReplyKeyboardRemove())
 
-    await state.set_state('')
-    # await state.clear()
+    state_data = await state.get_data()
+    await state.clear()
+    await state.update_data(state_data)
 
     registration_message = RegistrationMessage(
         event='registration',

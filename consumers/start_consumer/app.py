@@ -17,6 +17,8 @@ from .model.models import User, Role, ResidentAdditionalData, UserRole
 from sqlalchemy.future import select
 from sqlalchemy import insert
 
+from config.settings import settings
+
 from aiogram import Bot
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
@@ -38,7 +40,7 @@ async def start_consumer() -> None:
 
         await channel.set_qos(prefetch_count=10)
 
-        start_queue = await channel.declare_queue('start_queue', durable=True)
+        start_queue = await channel.declare_queue(settings.START_QUEUE_NAME, durable=True)
 
         logger.info('Start consumer started!')
         async with start_queue.iterator() as queue_iter:

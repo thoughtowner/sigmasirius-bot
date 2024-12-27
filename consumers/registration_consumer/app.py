@@ -30,7 +30,7 @@ async def registration_consumer() -> None:
 
         await channel.set_qos(prefetch_count=10)
 
-        registration_queue = await channel.declare_queue('registration_queue', durable=True)
+        registration_queue = await channel.declare_queue(settings.REGISTRATION_QUEUE_NAME, durable=True)
 
         logger.info('Registration consumer started!')
         async with registration_queue.iterator() as queue_iter:

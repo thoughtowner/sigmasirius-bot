@@ -31,11 +31,9 @@ default = DefaultBotProperties(parse_mode=ParseMode.HTML)
 bot = Bot(token=settings.BOT_TOKEN, default=default)
 
 async def handle_check_registration_event(message): # TODO async def handle_check_registration_event(message: CheckRegistrationMessage)
-    user_instance = get_user(message)
-
     async with async_session() as db:
         user_id_query = await db.execute(
-            select(User.id).filter(User.telegram_id == user_instance.telegram_id))
+            select(User.id).filter(User.telegram_id == message['telegram_id']))
         user_id = user_id_query.scalar()
 
         resident_role_id_query = await db.execute(
@@ -47,23 +45,29 @@ async def handle_check_registration_event(message): # TODO async def handle_chec
         user_role_result = user_role_query.all()
 
         if user_role_result:
-            logger.info("This user with this data is already registered: %s", message)
-            async with channel_pool.acquire() as _channel:
-                registration_exchange = await _channel.declare_exchange("registration_exchange",
-                                                                        ExchangeType.DIRECT, durable=True)
-                user_registration_queue = await _channel.declare_queue(
-                    f'user_registration_queue.{message["telegram_id"]}',
-                    durable=True,
+            flag = False
+            logger.info('This user with this data is already registered: %s', message)
+        else:
+            flag = True
+            logger.info('This user with this data is not registered: %s', message)
+
+        async with channel_pool.acquire() as _channel:
+            registration_exchange = await _channel.declare_exchange(settings.REGISTRATION_EXCHANGE_NAME, ExchangeType.DIRECT, durable=True)
+            user_registration_queue = await _channel.declare_queue(
+                settings.USER_REGISTRATION_QUEUE_TEMPLATE.format(
+                    telegram_id=message['telegram_id']
+                ),
+                durable=True,
+            )
+            await user_registration_queue.bind(
+                registration_exchange,
+                settings.USER_REGISTRATION_QUEUE_TEMPLATE.format(
+                    telegram_id=message['telegram_id']
                 )
-                await user_registration_queue.bind(
-                    registration_exchange,
-                    settings.USER_REGISTRATION_QUEUE_TEMPLATE.format(
-                        telegram_id=message['telegram_id']
-                    )
+            )
+            await registration_exchange.publish(
+                aio_pika.Message(msgpack.packb({'flag': flag})),
+                settings.USER_REGISTRATION_QUEUE_TEMPLATE.format(
+                    telegram_id=message['telegram_id']
                 )
-                await registration_exchange.publish(
-                    aio_pika.Message(msgpack.packb({'flag': False})),
-                    settings.USER_REGISTRATION_QUEUE_TEMPLATE.format(
-                        telegram_id=message['telegram_id']
-                    )
-                )
+            )

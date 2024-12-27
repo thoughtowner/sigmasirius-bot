@@ -25,10 +25,6 @@ logging.config.dictConfig(LOGGING_CONFIG)
 
 @router.message(F.text == START)
 async def start(message: Message, state: FSMContext):
-    state_data = await state.get_data()
-    await state.clear()
-    await state.update_data(state_data)
-
     await state.update_data(telegram_id=message.from_user.id)
     data = await state.get_data()
 

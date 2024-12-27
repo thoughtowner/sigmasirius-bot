@@ -80,8 +80,9 @@ async def upload_photo(message: Message, state: FSMContext):
     data = await state.get_data()
     await message.answer(msg.PUSH_DATA_TO_ADD_APPLICATION_FORM_QUERY)
 
-    await state.set_state('')
-    # await state.clear()
+    state_data = await state.get_data()
+    await state.clear()
+    await state.update_data(state_data)
 
     application_form_message = AddApplicationFormMessage(
         event='application_form',

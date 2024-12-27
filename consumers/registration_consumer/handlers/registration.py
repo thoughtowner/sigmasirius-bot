@@ -31,49 +31,32 @@ default = DefaultBotProperties(parse_mode=ParseMode.HTML)
 bot = Bot(token=settings.BOT_TOKEN, default=default)
 
 async def handle_registration_event(message): # TODO async def handle_registration_event(message: RegistrationMessage)
-    user_instance = get_user(message)
-    resident_additional_data_instance = get_resident_additional_data(message)
+    async with async_session() as db:
+        user_result = await db.execute(
+            select(User.id).filter(User.telegram_id == message['telegram_id']))
+        user_id = user_result.scalar()
 
-    try:
-        async with async_session() as db:
-            user_result = await db.execute(
-                select(User.id).filter(User.telegram_id == user_instance.telegram_id))
-            user_id = user_result.scalar()
+        resident_role_id_query = await db.execute(
+            select(Role.id).filter(Role.title == 'resident'))
+        resident_role_id = resident_role_id_query.scalar()
 
-            resident_role_id_query = await db.execute(
-                select(Role.id).filter(Role.title == 'resident'))
-            resident_role_id = resident_role_id_query.scalar()
+        await db.execute(insert(UserRole).values(
+            user_id=user_id,
+            role_id=resident_role_id
+        ))
 
-            await db.execute(insert(UserRole).values(
-                user_id=user_id,
-                role_id=resident_role_id
-            ))
+        await db.flush()
 
-            await db.flush()
+        await db.execute(insert(ResidentAdditionalData).values(
+            full_name=message['full_name'],
+            phone_number=message['phone_number'],
+            room=message['room'],
+            user_id=user_id
+        ))
 
-            await db.execute(insert(ResidentAdditionalData).values(
-                full_name=resident_additional_data_instance.full_name,
-                phone_number=resident_additional_data_instance.phone_number,
-                room=resident_additional_data_instance.room,
-                user_id=user_id
-            ))
+        await db.commit()
 
-            await db.commit()
-
-            async with channel_pool.acquire() as _channel:
-                registration_exchange = await _channel.get_exchange('registration_exchange')
-                user_registration_queue = await _channel.declare_queue(
-                    f'user_registration_queue.{message["telegram_id"]}',
-                    durable=True
-                )
-                await user_registration_queue.bind(
-                    registration_exchange,
-                    f'user_registration_queue.{message["telegram_id"]}'
-                )
-                await registration_exchange.publish(
-                    aio_pika.Message(msgpack.packb({'flag': True})),
-                    f'user_registration_queue.{message["telegram_id"]}'
-                )
-
-    except IntegrityError as e:
-        print(e)
+        await bot.send_message(
+            text='Вы успешно зарегистрировались!',
+            chat_id=message['telegram_id']
+        )

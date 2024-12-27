@@ -28,13 +28,10 @@ default = DefaultBotProperties(parse_mode=ParseMode.HTML)
 bot = Bot(token=settings.BOT_TOKEN, default=default)
 
 async def handle_start_event(message): # TODO async def handle_start_event(message: StartMessage)
-    user_instance = get_user(message)
-
     try:
         async with async_session() as db:
             user_query = insert(User).values(
-                telegram_id=user_instance.telegram_id,
-                telegram_user_username=user_instance.telegram_user_username
+                telegram_id=message['telegram_id']
             )
 
             await db.execute(user_query)
@@ -43,10 +40,10 @@ async def handle_start_event(message): # TODO async def handle_start_event(messa
 
             await bot.send_message(
                 text=render('start/start.jinja2'),
-                chat_id=user_instance.telegram_id
+                chat_id=message['telegram_id']
             )
     except IntegrityError:
         await bot.send_message(
             text=render('start/start.jinja2'),
-            chat_id=user_instance.telegram_id
+            chat_id=message['telegram_id']
         )
