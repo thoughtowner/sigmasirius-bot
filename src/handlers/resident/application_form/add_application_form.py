@@ -85,8 +85,7 @@ async def upload_photo(message: Message, state: FSMContext):
     await state.update_data(state_data)
 
     application_form_message = AddApplicationFormMessage(
-        event='application_form',
-        action='add_application_form',
+        event='add_application_form',
         telegram_id=data['telegram_id'],
         title=data['title'],
         description=data['description'],

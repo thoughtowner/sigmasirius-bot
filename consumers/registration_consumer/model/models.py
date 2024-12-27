@@ -46,8 +46,8 @@ class UserRole(Base):
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
 
-    user_id: Mapped[UUID] = mapped_column(ForeignKey('user.id'))
-    role_id: Mapped[UUID] = mapped_column(ForeignKey('role.id'))
+    user_id: Mapped[UUID] = mapped_column(ForeignKey('users.id'))
+    role_id: Mapped[UUID] = mapped_column(ForeignKey('roles.id'))
 
     user: Mapped['User'] = relationship(back_populates='roles')
     role: Mapped['Role'] = relationship(back_populates='users')
@@ -66,7 +66,7 @@ class ResidentAdditionalData(Base):
     phone_number: Mapped[str] = mapped_column(String)
     room: Mapped[str] = mapped_column(String)
 
-    user_id: Mapped[UUID] = mapped_column(ForeignKey('user.id'))
+    user_id: Mapped[UUID] = mapped_column(ForeignKey('users.id'))
     user: Mapped['User'] = relationship(back_populates='resident_additional_data')
 
 
@@ -82,7 +82,7 @@ class AdminAdditionalData(Base):
     full_name: Mapped[str] = mapped_column(Text, index=True)
     phone_number: Mapped[str] = mapped_column(String)
 
-    user_id: Mapped[UUID] = mapped_column(ForeignKey('user.id'))
+    user_id: Mapped[UUID] = mapped_column(ForeignKey('users.id'))
     user: Mapped['User'] = relationship(back_populates='admin_additional_data')
 
 
@@ -94,10 +94,10 @@ class ApplicationForm(Base):
     title: Mapped[str] = mapped_column(Text)
     description: Mapped[str] = mapped_column(Text)
 
-    status_id: Mapped[UUID] = mapped_column(ForeignKey('application_form_status.id'))
+    status_id: Mapped[UUID] = mapped_column(ForeignKey('application_form_statuses.id'))
     status: Mapped['ApplicationFormStatus'] = relationship(back_populates='application_form')
 
-    user_id: Mapped[UUID] = mapped_column(ForeignKey('user.id'))
+    user_id: Mapped[UUID] = mapped_column(ForeignKey('users.id'))
     user: Mapped['User'] = relationship(back_populates='application_forms')
 
 

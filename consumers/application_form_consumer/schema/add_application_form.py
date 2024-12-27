@@ -1,8 +1,7 @@
 from .base import BaseMessage
 
 
-class ApplicationFormMessage(BaseMessage):
-    action: str
+class AddApplicationFormMessage(BaseMessage):
     telegram_id: int
     title: str
     description: str

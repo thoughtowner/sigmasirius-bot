@@ -101,8 +101,8 @@ async def take_for_processing(callback_query: CallbackQuery, state: FSMContext) 
             aio_pika.Message(
                 msgpack.packb(
                     {
-                        'event': 'application_form_new_status',
-                        'action': 'take_for_processing',
+                        'event': 'change_application_form_status',
+                        'action': 'take_application_form_for_processing',
                         'clicked_admin_telegram_id': telegram_id,
                         'clicked_admin_message_id': message_id,
                         'owner_telegram_id': application_form_for_owner_data['chat_id'],

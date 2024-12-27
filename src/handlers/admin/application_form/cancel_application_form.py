@@ -77,8 +77,8 @@ async def cancel(callback_query: CallbackQuery, state: FSMContext) -> None:
             aio_pika.Message(
                 msgpack.packb(
                     {
-                        'event': 'application_form_new_status',
-                        'action': 'complete',
+                        'event': 'change_application_form_status',
+                        'action': 'cancel_application_form',
                         'clicked_admin_telegram_id': telegram_id,
                         'clicked_admin_message_id': message_id,
                         'owner_telegram_id': application_form_for_owner_data['chat_id'],
