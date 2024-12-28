@@ -65,7 +65,7 @@ async def start_registration(message: Message, state: FSMContext):
         retries = 3
         for _ in range(retries):
             try:
-                registration_response_message = await user_registration_queue.get()
+                registration_response_message = await user_registration_queue.get(no_ack=True)
                 body = msgpack.unpackb(registration_response_message.body)
                 break
             except QueueEmpty:

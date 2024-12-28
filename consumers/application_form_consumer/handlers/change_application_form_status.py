@@ -27,7 +27,7 @@ bot = Bot(token=settings.BOT_TOKEN, default=default)
 
 async def handle_change_application_form_status_event(message): # TODO async def handle_application_form_event(message: ApplicationFormStatusMessage)
     if message['action'] == 'take_application_form_for_processing':
-        async with async_session() as db:
+        async with (async_session() as db):
             new_status_result = await db.execute(select(ApplicationFormStatus.id).filter(ApplicationFormStatus.title == message['new_status']))
             new_status_id = new_status_result.scalar()
 
@@ -85,7 +85,11 @@ async def handle_change_application_form_status_event(message): # TODO async def
                 )
                 .join(User, User.telegram_id == TelegramIdAndMessageId.telegram_id)
                 .join(ApplicationForm, ApplicationForm.id == TelegramIdAndMessageId.application_form_id)
-                .where(ApplicationForm.id == application_form_id)
+                .where(
+                    (ApplicationForm.id == application_form_id)
+                    & (User.id == ApplicationForm.user_id)
+                    & (TelegramIdAndMessageId.message_id != message['working_admin_message_id'])
+                )
             )
             resident_telegram_id_and_message_id = resident_telegram_id_and_message_id_query.fetchone()
 
@@ -94,21 +98,26 @@ async def handle_change_application_form_status_event(message): # TODO async def
                 'message_id': resident_telegram_id_and_message_id[1]
             }
 
-            admins_telegram_ids_and_message_ids_query = await db.execute(
+            print(parsed_resident_telegram_id_and_message_id)
+
+            telegram_ids_and_message_ids_by_application_form_id_query = await db.execute(
                 select(TelegramIdAndMessageId.telegram_id, TelegramIdAndMessageId.message_id)
                 .filter(TelegramIdAndMessageId.application_form_id == application_form_id)
             )
-            admins_telegram_ids_and_message_ids = admins_telegram_ids_and_message_ids_query.all()
+            telegram_ids_and_message_by_application_form_id_ids = telegram_ids_and_message_ids_by_application_form_id_query.all()
 
-            for admins_telegram_id_and_message_id in admins_telegram_ids_and_message_ids:
-                if admins_telegram_id_and_message_id[0] == message['working_admin_telegram_id']:
+            print(telegram_ids_and_message_by_application_form_id_ids)
+
+            for telegram_id_and_message_id_by_application_form_id in telegram_ids_and_message_by_application_form_id_ids:
+                if telegram_id_and_message_id_by_application_form_id[0] == message['working_admin_telegram_id'] \
+                        and telegram_id_and_message_id_by_application_form_id[1] == message['working_admin_message_id']:
                     await bot.edit_message_caption(
                         caption=render(
                             'application_form/application_form_for_admin.jinja2',
                             body=parsed_application_form_for_admin
                         ),
-                        chat_id=admins_telegram_id_and_message_id[0],
-                        message_id=admins_telegram_id_and_message_id[1]
+                        chat_id=telegram_id_and_message_id_by_application_form_id[0],
+                        message_id=telegram_id_and_message_id_by_application_form_id[1]
                     )
 
                     complete_btn = InlineKeyboardButton(text='Выполнить', callback_data='complete_application_form')
@@ -118,23 +127,24 @@ async def handle_change_application_form_status_event(message): # TODO async def
 
                     await bot.edit_message_reply_markup(
                         reply_markup=new_markup,
-                        chat_id=admins_telegram_id_and_message_id[0],
-                        message_id=admins_telegram_id_and_message_id[1]
+                        chat_id=telegram_id_and_message_id_by_application_form_id[0],
+                        message_id=telegram_id_and_message_id_by_application_form_id[1]
+                    )
+                elif telegram_id_and_message_id_by_application_form_id[0] == parsed_resident_telegram_id_and_message_id['telegram_id'] \
+                        and telegram_id_and_message_id_by_application_form_id[1] == parsed_resident_telegram_id_and_message_id['message_id']:
+                    await bot.edit_message_caption(
+                        caption=render(
+                            'application_form/application_form_for_resident.jinja2',
+                            body=parsed_application_form_for_resident
+                        ),
+                        chat_id=parsed_resident_telegram_id_and_message_id['telegram_id'],
+                        message_id=parsed_resident_telegram_id_and_message_id['message_id']
                     )
                 else:
                     await bot.delete_message(
-                        chat_id=admins_telegram_id_and_message_id[0],
-                        message_id=admins_telegram_id_and_message_id[1]
+                        chat_id=telegram_id_and_message_id_by_application_form_id[0],
+                        message_id=telegram_id_and_message_id_by_application_form_id[1]
                     )
-
-            await bot.edit_message_caption(
-                caption=render(
-                    'application_form/application_form_for_resident.jinja2',
-                    application_form_for_admins=parsed_application_form_for_resident
-                ),
-                chat_id=parsed_resident_telegram_id_and_message_id['telegram_id'],
-                message_id=parsed_resident_telegram_id_and_message_id['message_id']
-            )
 
     elif message['action'] == 'complete_application_form':
         async with async_session() as db:
@@ -184,7 +194,11 @@ async def handle_change_application_form_status_event(message): # TODO async def
                 )
                 .join(User, User.telegram_id == TelegramIdAndMessageId.telegram_id)
                 .join(ApplicationForm, ApplicationForm.id == TelegramIdAndMessageId.application_form_id)
-                .where(ApplicationForm.id == application_form_id)
+                .where(
+                    (ApplicationForm.id == application_form_id)
+                    & (User.id == ApplicationForm.user_id)
+                    & (TelegramIdAndMessageId.message_id != message['working_admin_message_id'])
+                )
             )
             resident_telegram_id_and_message_id = resident_telegram_id_and_message_id_query.fetchone()
 
@@ -255,7 +269,11 @@ async def handle_change_application_form_status_event(message): # TODO async def
                 )
                 .join(User, User.telegram_id == TelegramIdAndMessageId.telegram_id)
                 .join(ApplicationForm, ApplicationForm.id == TelegramIdAndMessageId.application_form_id)
-                .where(ApplicationForm.id == application_form_id)
+                .where(
+                    (ApplicationForm.id == application_form_id)
+                    & (User.id == ApplicationForm.user_id)
+                    & (TelegramIdAndMessageId.message_id != message['working_admin_message_id'])
+                )
             )
             resident_telegram_id_and_message_id = resident_telegram_id_and_message_id_query.fetchone()
 
