@@ -1,5 +1,6 @@
 from ..mappers import get_user, get_application_form
 from config.settings import settings
+from ..parsers import parse_status
 from ..storage.db import async_session
 
 from aio_pika import ExchangeType
@@ -75,13 +76,13 @@ async def handle_add_application_form_event(message): # TODO async def handle_ap
             resident_room=application_form_for_admin[2],
             title=application_form_for_admin[3],
             description=application_form_for_admin[4],
-            status=application_form_for_admin[5]
+            status=parse_status(application_form_for_admin[5])
         )
 
         parsed_application_form_for_resident = ApplicationFormForResidentMessage(
             title=application_form_for_admin[3],
             description=application_form_for_admin[4],
-            status=application_form_for_admin[5]
+            status=parse_status(application_form_for_admin[5])
         )
 
         admin_role_id_result = await db.execute(

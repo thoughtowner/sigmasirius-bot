@@ -1,5 +1,6 @@
 from ..mappers import get_user, get_application_form
 from config.settings import settings
+from ..parsers import parse_status
 from ..storage.db import async_session
 
 from aio_pika import ExchangeType
@@ -69,13 +70,13 @@ async def handle_change_application_form_status_event(message): # TODO async def
                 resident_room=application_form_for_admin[2],
                 title=application_form_for_admin[3],
                 description=application_form_for_admin[4],
-                status=application_form_for_admin[5]
+                status=parse_status(application_form_for_admin[5])
             )
 
             parsed_application_form_for_resident = ApplicationFormForResidentMessage(
                 title=application_form_for_admin[3],
                 description=application_form_for_admin[4],
-                status=application_form_for_admin[5]
+                status=parse_status(application_form_for_admin[5])
             )
 
             resident_telegram_id_and_message_id_query = await db.execute(
@@ -98,15 +99,11 @@ async def handle_change_application_form_status_event(message): # TODO async def
                 'message_id': resident_telegram_id_and_message_id[1]
             }
 
-            print(parsed_resident_telegram_id_and_message_id)
-
             telegram_ids_and_message_ids_by_application_form_id_query = await db.execute(
                 select(TelegramIdAndMessageId.telegram_id, TelegramIdAndMessageId.message_id)
                 .filter(TelegramIdAndMessageId.application_form_id == application_form_id)
             )
             telegram_ids_and_message_by_application_form_id_ids = telegram_ids_and_message_ids_by_application_form_id_query.all()
-
-            print(telegram_ids_and_message_by_application_form_id_ids)
 
             for telegram_id_and_message_id_by_application_form_id in telegram_ids_and_message_by_application_form_id_ids:
                 if telegram_id_and_message_id_by_application_form_id[0] == message['working_admin_telegram_id'] \
@@ -184,7 +181,7 @@ async def handle_change_application_form_status_event(message): # TODO async def
             parsed_application_form_for_resident = ApplicationFormForResidentMessage(
                 title=application_form_for_resident[0],
                 description=application_form_for_resident[1],
-                status=application_form_for_resident[2]
+                status=parse_status(application_form_for_resident[2])
             )
 
             resident_telegram_id_and_message_id_query = await db.execute(
@@ -259,7 +256,7 @@ async def handle_change_application_form_status_event(message): # TODO async def
             parsed_application_form_for_resident = ApplicationFormForResidentMessage(
                 title=application_form_for_resident[0],
                 description=application_form_for_resident[1],
-                status=application_form_for_resident[2]
+                status=parse_status(application_form_for_resident[2])
             )
 
             resident_telegram_id_and_message_id_query = await db.execute(
