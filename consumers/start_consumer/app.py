@@ -3,12 +3,12 @@ import logging.config
 import aio_pika
 import msgpack
 
-from logger import LOGGING_CONFIG, logger, correlation_id_ctx
-from storage.rabbit import channel_pool
+from .logger import LOGGING_CONFIG, logger, correlation_id_ctx
+from .storage.rabbit import channel_pool
 
 from .mappers import get_user
 from config.settings import settings
-from storage.db import async_session
+from .storage.db import async_session
 
 from aio_pika import ExchangeType
 from sqlalchemy.exc import IntegrityError

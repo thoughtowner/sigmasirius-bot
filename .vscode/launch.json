@@ -1,0 +1,128 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+
+    {
+      "name": "bot_polling",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/src/app.py",
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "PYTHONUNBUFFERED": "1",
+        "PYTHONPATH": "${workspaceFolder}"
+      },
+      "console": "integratedTerminal"
+    },
+
+    {
+      "name": "start_consumer",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "consumers.start_consumer",
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "PYTHONUNBUFFERED": "1",
+        "PYTHONPATH": "${workspaceFolder}"
+      },
+      "console": "integratedTerminal"
+    },
+
+    {
+      "name": "registration_consumer",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "consumers.registration_consumer",
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "PYTHONUNBUFFERED": "1",
+        "PYTHONPATH": "${workspaceFolder}"
+      },
+      "console": "integratedTerminal"
+    },
+
+    {
+      "name": "application_form_consumer",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "consumers.application_form_consumer",
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "PYTHONUNBUFFERED": "1",
+        "PYTHONPATH": "${workspaceFolder}"
+      },
+      "console": "integratedTerminal"
+    },
+
+    {
+      "name": "uvicorn",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "uvicorn",
+      "args": [
+        "src.app:create_app",
+        "--factory",
+        "--port",
+        "8001"
+      ],
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "PYTHONUNBUFFERED": "1",
+        "PYTHONPATH": "${workspaceFolder}"
+      },
+      "console": "integratedTerminal"
+    },
+
+    {
+      "name": "add_application_form_statuses",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/scripts/add_application_form_statuses.py",
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "PYTHONUNBUFFERED": "1",
+        "PYTHONPATH": "${workspaceFolder}"
+      },
+      "console": "integratedTerminal"
+    },
+
+    {
+      "name": "add_roles",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/scripts/add_roles.py",
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "PYTHONUNBUFFERED": "1",
+        "PYTHONPATH": "${workspaceFolder}"
+      },
+      "console": "integratedTerminal"
+    },
+
+    {
+      "name": "give_user_admin_role",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/scripts/give_user_admin_role.py",
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "PYTHONUNBUFFERED": "1",
+        "PYTHONPATH": "${workspaceFolder}"
+      },
+      "console": "integratedTerminal"
+    },
+
+    {
+      "name": "migrate",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/scripts/migrate.py",
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "PYTHONUNBUFFERED": "1",
+        "PYTHONPATH": "${workspaceFolder}"
+      },
+      "console": "integratedTerminal"
+    }
+  ]
+}

@@ -3,8 +3,8 @@ import logging.config
 import aio_pika
 import msgpack
 
-from logger import LOGGING_CONFIG, logger, correlation_id_ctx
-from storage.rabbit import channel_pool
+from .logger import LOGGING_CONFIG, logger, correlation_id_ctx
+from .storage.rabbit import channel_pool
 
 from .handlers.add_application_form import handle_add_application_form_event
 from .handlers.change_application_form_status import handle_change_application_form_status_event
