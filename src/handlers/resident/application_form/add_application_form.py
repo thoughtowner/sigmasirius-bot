@@ -12,7 +12,7 @@ from starlette_context import context
 from consumers.application_form_consumer.logger import correlation_id_ctx
 
 from config.settings import settings
-from src.schema.add_application_form import AddApplicationFormMessage
+from src.schema.add_aplication_form.add_application_form import AddApplicationFormMessage
 from src.states.add_application_form import AddApplicationForm
 from ..router import router
 from src.validators.add_application_form.validators import TitleValidator, DescriptionValidator

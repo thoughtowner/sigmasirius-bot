@@ -40,7 +40,7 @@ psql -h localhost -U postgres -d postgres -p <your_port>
 * Запустите скрипт `scripts/add_roles` для добавления стандартных ролей в таблицу roles базы данных.
 * Запустите скрипт `scripts/add_application_form_statuses` для добавления стандартных статусов для заявок на ремонт в таблицу application_form_statuses базы данных.
 * Запустите модуль uvicorn с параметрами `src.app:create_app --factory --port 8001`.
-* Запустите всех консюмеров, которые находятся на следующих путях: `consumers/start_consumer`, `consumers/registration_consumer`, `consumers/application_form_consumer`.
+* Запустите всех консюмеров, которые находятся на следующих путях: `consumers/start_consumer`, `consumers/reservation_consumer`, `consumers/application_form_consumer`.
 
 ## Как добавить пользователю роль администратора?
 1) Запустите бота через пользователя, которому хотите добавить роль администратора.

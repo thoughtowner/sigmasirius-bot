@@ -6,10 +6,10 @@ from ..storage.db import async_session
 from aio_pika import ExchangeType
 from sqlalchemy.exc import IntegrityError
 
-from ..model.models import User, Role, ApplicationForm, ResidentAdditionalData, ApplicationFormStatus, UserRole, TelegramIdAndMessageId
+from ..model.models import User, ApplicationForm, Resident, TelegramIdAndMessageId
 from sqlalchemy import insert, select
 
-from ..schema.application_form_for_admin import ApplicationFormForAdminMessage
+from ..schema.application_form_for_repairman import ApplicationFormForRepairmanMessage
 from ..schema.application_form_for_resident import ApplicationFormForResidentMessage
 
 from aiogram import Bot
@@ -34,17 +34,13 @@ bot = Bot(token=settings.BOT_TOKEN, default=default)
 
 async def handle_add_application_form_event(message): # TODO async def handle_application_form_event(message: ApplicationFormMessage)
     async with async_session() as db:
-        status_result = await db.execute(
-            select(ApplicationFormStatus.id).filter(ApplicationFormStatus.title == message['status']))
-        status_id = status_result.scalar()
-
         user_result = await db.execute(select(User.id).filter(User.telegram_id == message['telegram_id']))
         user_id = user_result.scalar()
 
         application_form_query = insert(ApplicationForm).values(
             title=message['title'],
             description=message['description'],
-            status_id=status_id,
+            status=ApplicationForm.Status(message['status']),
             user_id=user_id
         ).returning(ApplicationForm.id)
         application_form_result = await db.execute(application_form_query)
@@ -52,50 +48,43 @@ async def handle_add_application_form_event(message): # TODO async def handle_ap
 
         await db.commit()
 
-        application_form_for_admin_query = (
+        application_form_for_repairman_query = (
             select(
-                ResidentAdditionalData.full_name,
-                ResidentAdditionalData.phone_number,
-                ResidentAdditionalData.room,
+                Resident.full_name,
+                User.phone_number,
+                Resident.room,
                 ApplicationForm.title,
                 ApplicationForm.description,
-                ApplicationFormStatus.title
+                ApplicationForm.status
             )
             .select_from(User)
-            .join(ResidentAdditionalData, ResidentAdditionalData.user_id == User.id)
+            .join(Resident, Resident.user_id == User.id)
             .join(ApplicationForm, ApplicationForm.user_id == User.id)
-            .join(ApplicationFormStatus, ApplicationFormStatus.id == ApplicationForm.status_id)
+            # ApplicationForm.status is an Enum column; no join needed
             .where(ApplicationForm.id == application_form_id)
         )
-        application_form_for_admin_result = await db.execute(application_form_for_admin_query)
-        application_form_for_admin = application_form_for_admin_result.fetchone()
+        application_form_for_repairman_result = await db.execute(application_form_for_repairman_query)
+        application_form_for_repairman = application_form_for_repairman_result.fetchone()
 
-        parsed_application_form_for_admin = ApplicationFormForAdminMessage(
-            resident_full_name=application_form_for_admin[0],
-            resident_phone_number=application_form_for_admin[1],
-            resident_room=application_form_for_admin[2],
-            title=application_form_for_admin[3],
-            description=application_form_for_admin[4],
-            status=parse_status(application_form_for_admin[5])
+        parsed_application_form_for_repairman = ApplicationFormForRepairmanMessage(
+            resident_full_name=application_form_for_repairman[0],
+            resident_phone_number=application_form_for_repairman[1],
+            resident_room=application_form_for_repairman[2],
+            title=application_form_for_repairman[3],
+            description=application_form_for_repairman[4],
+            status=parse_status(application_form_for_repairman[5].value)
         )
 
         parsed_application_form_for_resident = ApplicationFormForResidentMessage(
-            title=application_form_for_admin[3],
-            description=application_form_for_admin[4],
-            status=parse_status(application_form_for_admin[5])
+            title=application_form_for_repairman[3],
+            description=application_form_for_repairman[4],
+            status=parse_status(application_form_for_repairman[5].value)
         )
 
-        admin_role_id_result = await db.execute(
-            select(Role.id).filter(Role.title == 'admin')
+        repairmen_telegram_id_query = await db.execute(
+            select(User.telegram_id).filter(User.is_repairman == True)
         )
-        admin_role_id = admin_role_id_result.scalar()
-
-        admins_telegram_id_query = await db.execute(
-            select(User.telegram_id)
-            .join(UserRole, UserRole.user_id == User.id)
-            .filter(UserRole.role_id == admin_role_id)
-        )
-        admins_telegram_id = admins_telegram_id_query.scalars().all()
+        repairmen_telegram_id = repairmen_telegram_id_query.scalars().all()
 
         photo_input_file = BufferedInputFile(images_storage.get_file(message['photo_title']), message['photo_title'])
 
@@ -105,20 +94,20 @@ async def handle_add_application_form_event(message): # TODO async def handle_ap
             inline_keyboard=[[take_for_processing_btn], [cancel_btn]]
         )
 
-        for admin_telegram_id in admins_telegram_id:
-            application_form_for_admin_message = await bot.send_photo(
+        for repairman_telegram_id in repairmen_telegram_id:
+            application_form_for_repairman_message = await bot.send_photo(
                 photo=photo_input_file,
                 caption=render(
-                    'application_form/application_form_for_admin.jinja2',
-                    body=parsed_application_form_for_admin
+                    'application_form/application_form_for_repairman.jinja2',
+                    body=parsed_application_form_for_repairman
                 ),
                 reply_markup=markup,
-                chat_id=admin_telegram_id
+                chat_id=repairman_telegram_id
             )
 
             await db.execute(insert(TelegramIdAndMessageId).values(
-                telegram_id=admin_telegram_id,
-                message_id=application_form_for_admin_message.message_id,
+                telegram_id=repairman_telegram_id,
+                message_id=application_form_for_repairman_message.message_id,
                 application_form_id=application_form_id
             ))
 

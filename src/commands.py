@@ -1,4 +1,4 @@
 START = '/start'
 GET_MY_TELEGRAM_ID = '/get_my_telegram_id'
-REGISTRATION = '/registration'
+CREATE_RESERVATION = '/create_reservation'
 ADD_APPLICATION_FORM = '/add_application_form'

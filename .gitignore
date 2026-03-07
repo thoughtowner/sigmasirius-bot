@@ -1,5 +1,7 @@
 .venv
 .idea
+.run
+.vscode
 config/.env
 config/.env.saved
 config/.env.db

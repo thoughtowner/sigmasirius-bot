@@ -6,8 +6,8 @@ from aiogram.types import Message, TelegramObject
 
 from ..storage.db import async_session
 
-from sqlalchemy import select, and_
-from src.model.models import User, Role, UserRole
+from sqlalchemy import select
+from src.model.models import User
 
 
 class AdminMiddleware(BaseMiddleware):
@@ -22,17 +22,10 @@ class AdminMiddleware(BaseMiddleware):
         current_telegram_id = current_data['telegram_id']
 
         async with async_session() as db:
-            admin_role_result = await db.execute(select(Role.id).filter(Role.title == 'admin'))
-            admin_role_id = admin_role_result.scalar()
+            user_result = await db.execute(select(User).filter(User.telegram_id == current_telegram_id))
+            user = user_result.scalar()
 
-            user_result = await db.execute(select(User.id).filter(User.telegram_id == current_telegram_id))
-            user_id = user_result.scalar()
-
-            user_role_result = await db.execute(
-                select(UserRole).filter(and_(UserRole.user_id == user_id, UserRole.role_id == admin_role_id)))
-            user_role = user_role_result.scalar()
-
-            if not user_role:
+            if not user or not user.is_admin:
                 raise SkipHandler('Unauthorized')
 
         return await handler(event, data)

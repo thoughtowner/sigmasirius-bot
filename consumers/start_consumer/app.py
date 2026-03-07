@@ -13,7 +13,7 @@ from .storage.db import async_session
 from aio_pika import ExchangeType
 from sqlalchemy.exc import IntegrityError
 
-from .model.models import User, Role, ResidentAdditionalData, UserRole
+from .model.models import User
 from sqlalchemy.future import select
 from sqlalchemy import insert
 
@@ -25,6 +25,7 @@ from aiogram.enums import ParseMode
 from src.templates.env import render
 
 from consumers.start_consumer.handlers.start import handle_start_event
+from consumers.start_consumer.handlers.check_start import handle_check_start_event
 
 from .metrics import TOTAL_RECEIVED_MESSAGES
 
@@ -54,3 +55,5 @@ async def start_consumer() -> None:
 
                     if body['event'] == 'start':
                         await handle_start_event(body)
+                    elif body['event'] == 'check_start':
+                        await handle_check_start_event(body)

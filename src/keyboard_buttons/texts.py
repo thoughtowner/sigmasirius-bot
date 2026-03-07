@@ -1,4 +1,4 @@
-# registration
+# reservation
 
 BUILDINGS = ['3', '4']
 ENTRANCES = ['1', '2', '3', '4']

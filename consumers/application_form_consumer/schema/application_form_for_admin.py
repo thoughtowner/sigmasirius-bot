@@ -1,7 +1,7 @@
 from typing import TypedDict
 
 
-class ApplicationFormForAdminMessage(TypedDict):
+class ApplicationFormForRepairmanMessage(TypedDict):
     title: str
     description: str
     status: str
