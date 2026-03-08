@@ -5,7 +5,7 @@ from ..storage.db import async_session
 from aio_pika import ExchangeType
 from sqlalchemy.exc import IntegrityError
 
-from ..model.models import User, ApplicationForm
+from ..model.models import User, Reservation
 from sqlalchemy import select, insert
 
 from ..schema.start import StartMessage
@@ -42,9 +42,9 @@ async def handle_start_event(message): # TODO async def handle_start_event(messa
             select(User).filter(User.telegram_id == message['telegram_id']))
         user = user_query.scalar()
 
-        application_form_query = await db.execute(
-            select(ApplicationForm).filter(ApplicationForm.user_id == user.id))
-        application_form = application_form_query.scalar()
+        reservation_query = await db.execute(
+            select(Reservation).filter(Reservation.user_id == user.id))
+        reservation = reservation_query.scalar()
 
         if user.is_admin:
             await bot.send_message(
@@ -57,7 +57,7 @@ async def handle_start_event(message): # TODO async def handle_start_event(messa
                 chat_id=message['telegram_id']
             )
         else:
-            if application_form:
+            if reservation:
                 await bot.send_message(
                     text=render('start/start_for_resident_with_reservation.jinja2'),
                     chat_id=message['telegram_id']

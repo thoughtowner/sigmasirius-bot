@@ -6,7 +6,7 @@ from ..storage.db import async_session
 from aio_pika import ExchangeType
 from sqlalchemy.exc import IntegrityError
 
-from ..model.models import User, ApplicationForm, Resident, TelegramIdAndMessageId
+from ..model.models import User, ApplicationForm, TelegramIdAndMessageId
 from sqlalchemy import insert, select, update, and_
 
 from ..schema.application_form_for_repairman import ApplicationFormForRepairmanMessage
@@ -48,15 +48,13 @@ async def handle_change_application_form_status_event(message): # TODO async def
 
             application_form_for_repairman_query = await db.execute(
                 select(
-                    Resident.full_name,
+                    User.full_name,
                     User.phone_number,
-                    Resident.room,
                     ApplicationForm.title,
                     ApplicationForm.description,
                     ApplicationForm.status
                 )
                 .select_from(User)
-                .join(Resident, Resident.user_id == User.id)
                 .join(ApplicationForm, ApplicationForm.user_id == User.id)
             # ApplicationForm.status is stored as Enum on the ApplicationForm table
                 .where(ApplicationForm.id == application_form_id)
@@ -66,16 +64,15 @@ async def handle_change_application_form_status_event(message): # TODO async def
             parsed_application_form_for_repairman = ApplicationFormForRepairmanMessage(
                 resident_full_name=application_form_for_repairman[0],
                 resident_phone_number=application_form_for_repairman[1],
-                resident_room=application_form_for_repairman[2],
-                title=application_form_for_repairman[3],
-                description=application_form_for_repairman[4],
-                status=parse_status(application_form_for_repairman[5].value)
+                title=application_form_for_repairman[2],
+                description=application_form_for_repairman[3],
+                status=parse_status(application_form_for_repairman[4].value)
             )
 
             parsed_application_form_for_resident = ApplicationFormForResidentMessage(
-                title=application_form_for_repairman[3],
-                description=application_form_for_repairman[4],
-                status=parse_status(application_form_for_repairman[5].value)
+                title=application_form_for_repairman[2],
+                description=application_form_for_repairman[3],
+                status=parse_status(application_form_for_repairman[4].value)
             )
 
             resident_telegram_id_and_message_id_query = await db.execute(
@@ -167,10 +164,6 @@ async def handle_change_application_form_status_event(message): # TODO async def
                     ApplicationForm.description,
                     ApplicationForm.status
                 )
-                .select_from(User)
-                .join(Resident, Resident.user_id == User.id)
-                .join(ApplicationForm, ApplicationForm.user_id == User.id)
-            # ApplicationForm.status is stored as Enum on the ApplicationForm table
                 .where(ApplicationForm.id == application_form_id)
             )
             application_form_for_resident = application_form_for_resident_query.fetchone()
@@ -240,10 +233,6 @@ async def handle_change_application_form_status_event(message): # TODO async def
                     ApplicationForm.description,
                     ApplicationForm.status
                 )
-                .select_from(User)
-                .join(Resident, Resident.user_id == User.id)
-                .join(ApplicationForm, ApplicationForm.user_id == User.id)
-            # ApplicationForm.status is stored as Enum on the ApplicationForm table
                 .where(ApplicationForm.id == application_form_id)
             )
             application_form_for_resident = application_form_for_resident_query.fetchone()

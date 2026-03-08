@@ -5,7 +5,7 @@ from ..storage.db import async_session
 from aio_pika import ExchangeType
 from sqlalchemy.exc import IntegrityError
 
-from ..model.models import User, ApplicationForm, Resident
+from ..model.models import User, ApplicationForm, Reservation, ReservationStatus
 from sqlalchemy import select
 
 from ..schema import CheckReservationMessage
@@ -36,15 +36,34 @@ async def handle_check_reservation_event(message): # TODO async def handle_check
             select(User.id).filter(User.telegram_id == message['telegram_id']))
         user_id = user_id_query.scalar()
 
-        resident_query = await db.execute(select(Resident).filter(Resident.user_id == user_id))
-        resident = resident_query.scalar()
+        user_query = await db.execute(select(User).filter(User.id == user_id))
+        user = user_query.scalar()
 
-        if resident:
+        if not user:
             flag = False
-            logger.info('This user with this data is already create reservation: %s', message)
+            msg = 'Чтобы начать пользоваться ботом, выполните команду /start!'
+            logger.info('User is not enter /start command: %s', message)
+        elif user.is_admin or user.is_repairman:
+            flag = False
+            msg = 'Бронирование могут создавать только гости отеля!'
+            logger.info('User is not eligible to create reservation: %s', message)
         else:
-            flag = True
-            logger.info('This user with this data is not create reservation: %s', message)
+            existing_res_query = await db.execute(
+                select(Reservation).filter(
+                    (Reservation.user_id == user_id) &
+                    ((Reservation.status == ReservationStatus.AWAITING_EXECUTION) | (Reservation.status == ReservationStatus.IN_PROGRESS))
+                )
+            )
+            existing_res = existing_res_query.scalar()
+
+            if existing_res:
+                flag = False
+                msg = 'У Вас уже есть незавершённая бронь!'
+                logger.info('User already has an active reservation: %s', message)
+            else:
+                flag = True
+                msg = ''
+                logger.info('User is resident and may create reservation: %s', message)
 
         async with channel_pool.acquire() as _channel:
             reservation_exchange = await _channel.declare_exchange(settings.RESERVATION_EXCHANGE_NAME, ExchangeType.DIRECT, durable=True)
@@ -61,7 +80,7 @@ async def handle_check_reservation_event(message): # TODO async def handle_check
                 )
             )
             await reservation_exchange.publish(
-                aio_pika.Message(msgpack.packb({'flag': flag})),
+                aio_pika.Message(msgpack.packb({'flag': flag, 'msg': msg})),
                 settings.USER_RESERVATION_QUEUE_TEMPLATE.format(
                     telegram_id=message['telegram_id']
                 )

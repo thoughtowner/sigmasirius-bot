@@ -1,21 +1,29 @@
 from aiogram.types import KeyboardButton
 from .utils import create_single_row_buttons
-from .texts import BUILDINGS, ENTRANCES, ROOM_NUMBERS_BY_FLOOR
+from .texts import ROOM_CLASSES, CHECK_RESERVATION_DATA_ANSWERS
 
 
-BUILDINGS_ROW_BUTTONS = create_single_row_buttons(
-    [KeyboardButton(text=building) for building in BUILDINGS]
+# BUILDINGS_ROW_BUTTONS = create_single_row_buttons(
+#     [KeyboardButton(text=building) for building in BUILDINGS]
+# )
+
+# ENTRANCES_ROW_BUTTONS = create_single_row_buttons(
+#     [KeyboardButton(text=entrance) for entrance in ENTRANCES]
+# )
+
+# FLOORS_ROW_BUTTONS = create_single_row_buttons(
+#     [KeyboardButton(text=floor) for floor in ROOM_NUMBERS_BY_FLOOR.keys()]
+# )
+
+# ROOM_NUMBERS_BY_FLOOR_ROW_BUTTONS = {
+#     floor: create_single_row_buttons([KeyboardButton(text=room) for room in rooms])
+#     for floor, rooms in ROOM_NUMBERS_BY_FLOOR.items()
+# }
+
+ROOM_CLASSES_ROW_BUTTONS = create_single_row_buttons(
+    [KeyboardButton(text=building) for building in ROOM_CLASSES]
 )
 
-ENTRANCES_ROW_BUTTONS = create_single_row_buttons(
-    [KeyboardButton(text=entrance) for entrance in ENTRANCES]
+CHECK_RESERVATION_DATA_ROW_BUTTONS = create_single_row_buttons(
+    [KeyboardButton(text=answer) for answer in CHECK_RESERVATION_DATA_ANSWERS]
 )
-
-FLOORS_ROW_BUTTONS = create_single_row_buttons(
-    [KeyboardButton(text=floor) for floor in ROOM_NUMBERS_BY_FLOOR.keys()]
-)
-
-ROOM_NUMBERS_BY_FLOOR_ROW_BUTTONS = {
-    floor: create_single_row_buttons([KeyboardButton(text=room) for room in rooms])
-    for floor, rooms in ROOM_NUMBERS_BY_FLOOR.items()
-}

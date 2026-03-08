@@ -7,7 +7,7 @@ from aiogram.types import Message, TelegramObject
 from ..storage.db import async_session
 
 from sqlalchemy import select
-from src.model.models import User, Resident
+from src.model.models import User
 
 
 class AuthMiddleware(BaseMiddleware):
@@ -25,10 +25,10 @@ class AuthMiddleware(BaseMiddleware):
             user_result = await db.execute(select(User.id).filter(User.telegram_id == current_telegram_id))
             user_id = user_result.scalar()
 
-            resident_result = await db.execute(select(Resident).filter(Resident.user_id == user_id))
-            resident = resident_result.scalar()
+            user_result = await db.execute(select(User).filter(User.id == user_id))
+            user = user_result.scalar()
 
-            if not resident:
+            if not user or user.is_admin or user.is_repairman:
                 raise SkipHandler('Unauthorized')
 
         return await handler(event, data)

@@ -29,10 +29,10 @@
     },
 
     {
-      "name": "registration_consumer",
+      "name": "reservation_consumer",
       "type": "debugpy",
       "request": "launch",
-      "module": "consumers.registration_consumer",
+      "module": "consumers.reservation_consumer",
       "cwd": "${workspaceFolder}",
       "env": {
         "PYTHONUNBUFFERED": "1",

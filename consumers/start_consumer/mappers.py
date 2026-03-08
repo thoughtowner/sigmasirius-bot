@@ -1,4 +1,4 @@
-from .model.models import User, Resident, ApplicationForm
+from .model.models import User, ApplicationForm
 from .schema.start import StartMessage
 from .storage.db import async_session
 

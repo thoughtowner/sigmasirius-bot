@@ -1,8 +1,7 @@
-from ..base import BaseMessage
+from typing import TypedDict
 
 
-class ReservationMessage(BaseMessage):
-    telegram_id: int
+class CheckReservationDataMessage(TypedDict):
     people_quantity: int
     room_class: str
     check_in_date: str

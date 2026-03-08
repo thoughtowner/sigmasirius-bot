@@ -1,11 +1,11 @@
-from ..mappers import get_user, get_resident
+from ..mappers import get_user
 from config.settings import settings
 from ..storage.db import async_session
 
 from aio_pika import ExchangeType
 from sqlalchemy.exc import IntegrityError
 
-from ..model.models import User, ApplicationForm, Resident
+from ..model.models import User, ApplicationForm, Reservation, RoomClass
 from sqlalchemy import insert, select
 
 from ..schema import ReservationMessage
@@ -14,6 +14,7 @@ from aiogram import Bot
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from src.templates.env import render
+from datetime import datetime
 
 import io
 from src.files_storage.storage_client import images_storage
@@ -36,20 +37,17 @@ async def handle_reservation_event(message): # TODO async def handle_reservation
             select(User.id).filter(User.telegram_id == message['telegram_id']))
         user_id = user_result.scalar()
 
-        # update user's phone and create resident record
-        await db.execute(
-            User.__table__.update().where(User.id == user_id).values(phone_number=message['phone_number'])
-        )
-
-        await db.execute(insert(Resident).values(
-            full_name=message['full_name'],
-            room=message['room'],
+        await db.execute(insert(Reservation).values(
+            people_quantity=int(message['people_quantity']),
+            room_class=RoomClass(message['room_class']),
+            check_in_date=datetime.strptime(message['check_in_date'], '%Y-%m-%d').date(),
+            eviction_date=datetime.strptime(message['eviction_date'], '%Y-%m-%d').date(),
             user_id=user_id
         ))
 
         await db.commit()
 
         await bot.send_message(
-            text='Вы успешно зарегистрировались!',
+            text='Бронирование успешно создано!',
             chat_id=message['telegram_id']
         )

@@ -5,4 +5,7 @@ class ReservationMessage(BaseMessage):
     telegram_id: int
     full_name: str
     phone_number: str
-    room: str
+    people_quantity: int
+    room_class: str
+    check_in_date: str
+    eviction_date: str

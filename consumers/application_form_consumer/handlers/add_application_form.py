@@ -6,7 +6,7 @@ from ..storage.db import async_session
 from aio_pika import ExchangeType
 from sqlalchemy.exc import IntegrityError
 
-from ..model.models import User, ApplicationForm, Resident, TelegramIdAndMessageId
+from ..model.models import User, ApplicationForm, TelegramIdAndMessageId
 from sqlalchemy import insert, select
 
 from ..schema.application_form_for_repairman import ApplicationFormForRepairmanMessage
@@ -50,17 +50,14 @@ async def handle_add_application_form_event(message): # TODO async def handle_ap
 
         application_form_for_repairman_query = (
             select(
-                Resident.full_name,
+                User.full_name,
                 User.phone_number,
-                Resident.room,
                 ApplicationForm.title,
                 ApplicationForm.description,
                 ApplicationForm.status
             )
             .select_from(User)
-            .join(Resident, Resident.user_id == User.id)
             .join(ApplicationForm, ApplicationForm.user_id == User.id)
-            # ApplicationForm.status is an Enum column; no join needed
             .where(ApplicationForm.id == application_form_id)
         )
         application_form_for_repairman_result = await db.execute(application_form_for_repairman_query)
@@ -69,10 +66,9 @@ async def handle_add_application_form_event(message): # TODO async def handle_ap
         parsed_application_form_for_repairman = ApplicationFormForRepairmanMessage(
             resident_full_name=application_form_for_repairman[0],
             resident_phone_number=application_form_for_repairman[1],
-            resident_room=application_form_for_repairman[2],
-            title=application_form_for_repairman[3],
-            description=application_form_for_repairman[4],
-            status=parse_status(application_form_for_repairman[5].value)
+            title=application_form_for_repairman[2],
+            description=application_form_for_repairman[3],
+            status=parse_status(application_form_for_repairman[4].value)
         )
 
         parsed_application_form_for_resident = ApplicationFormForResidentMessage(

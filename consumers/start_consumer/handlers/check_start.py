@@ -5,7 +5,7 @@ from ..storage.db import async_session
 from aio_pika import ExchangeType
 from sqlalchemy.exc import IntegrityError
 
-from ..model.models import User, ApplicationForm, Resident
+from ..model.models import User, ApplicationForm
 from sqlalchemy import select, insert
 
 from ..schema.check_start import CheckStartMessage

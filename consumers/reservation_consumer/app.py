@@ -6,14 +6,14 @@ import msgpack
 from .logger import LOGGING_CONFIG, logger, correlation_id_ctx
 from .storage.rabbit import channel_pool
 
-from .mappers import get_user, get_resident
+from .mappers import get_user
 from config.settings import settings
 from .storage.db import async_session
 
 from aio_pika import ExchangeType
 from sqlalchemy.exc import IntegrityError
 
-from .model.models import User, Resident
+from .model.models import User
 from sqlalchemy import select, insert
 
 from .metrics import TOTAL_RECEIVED_MESSAGES
@@ -30,7 +30,7 @@ async def reservation_consumer() -> None:
 
         await channel.set_qos(prefetch_count=10)
 
-        reservation_queue = await channel.declare_queue(settings.reservation_QUEUE_NAME, durable=True)
+        reservation_queue = await channel.declare_queue(settings.RESERVATION_QUEUE_NAME, durable=True)
 
         logger.info('reservation consumer started!')
         async with reservation_queue.iterator() as queue_iter:

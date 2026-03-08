@@ -1,11 +1,14 @@
 services:
-  db:
+  postgres:
     image: postgres:13.2
+    container_name: hotel-subservices-bot-postgres
     ports:
-      - "5432:5432"
+      - "7940:5432"
     command: [ "postgres", "-c", "log_statement=all", "-c", "log_destination=stderr" ]
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: [ "CMD", "pg_isready", "-U", "postgres", "-d", "postgres" ]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
       interval: 1s
       retries: 20
     env_file:
@@ -58,3 +61,6 @@ services:
 #  networks:
 #    sirius:
 #      external: true
+
+volumes:
+  postgres_data:
