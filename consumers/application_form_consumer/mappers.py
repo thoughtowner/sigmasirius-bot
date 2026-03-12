@@ -1,4 +1,4 @@
-from .model.models import User, ApplicationForm
+from .model.models import User, ApplicationForm, ApplicationFormStatus
 from .schema.add_application_form import AddApplicationFormMessage
 
 from consumers.application_form_consumer.storage.db import async_session
@@ -18,6 +18,6 @@ async def get_application_form(message: AddApplicationFormMessage) -> Applicatio
     return ApplicationForm(
         title=message['title'],
         description=message['description'],
-        status=ApplicationForm.Status(message['status']),
+        status=ApplicationFormStatus(message['status']),
         user_id=user_id
     )

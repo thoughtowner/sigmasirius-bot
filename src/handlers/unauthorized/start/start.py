@@ -13,6 +13,7 @@ from src.states.start import Start
 from config.settings import settings
 from src.schema.start.start import StartMessage
 from src.schema.start.check_start import CheckStartMessage
+from src.schema.start.check_phone_number import CheckPhoneNumberMessage
 from ..router import router
 from src.messages import start as msg
 from src.commands import START
@@ -53,11 +54,13 @@ async def check_start(message: Message, state: FSMContext):
 
     async with channel_pool.acquire() as channel:  # type: aio_pika.Channel
         reverse_start_queue = await channel.declare_queue(
-            settings.REVERSE_START_QUEUE_NAME,
+            settings.USER_CHECK_START_QUEUE_TEMPLATE.format(
+                telegram_id=message.from_user.id
+            ),
             durable=True,
         )
 
-        retries = 100
+        retries = 10
         for _ in range(retries):
             try:
                 start_response_message = await reverse_start_queue.get(no_ack=True)
@@ -66,6 +69,11 @@ async def check_start(message: Message, state: FSMContext):
             except QueueEmpty:
                 await asyncio.sleep(1)
 
+        # if not body:
+        #     state_data = await state.get_data()
+        #     await state.clear()
+        #     await state.update_data(state_data)
+        #     return
         await state.update_data(flag=body['flag'])
         if body['flag']:
             await state.set_state(Start.full_name)
@@ -80,7 +88,8 @@ async def check_start(message: Message, state: FSMContext):
             start_message = StartMessage(
                 event='start',
                 telegram_id=state_data['telegram_id'],
-                phone_number=state_data['phone_number'],
+                full_name="null",
+                phone_number="null",
                 flag=state_data['flag']
             )
 
@@ -125,10 +134,57 @@ async def enter_phone_number(message: Message, state: FSMContext):
     try:
         phone_number = PhoneNumberValidator().validate(message)
         await state.update_data(phone_number=phone_number)
-        await message.answer(msg.WELCOME)
     except validation.InvalidPhoneNumberFormatError:
         await message.answer(msg.INVALID_PHONE_NUMBER_FORMAT)
         return
+    
+    data = await state.get_data()
+    check_phone_number_message = CheckPhoneNumberMessage(
+        event='check_phone_number',
+        telegram_id=data['telegram_id'],
+        phone_number=phone_number
+    )
+
+    async with channel_pool.acquire() as channel:  # type: aio_pika.Channel
+        logger.info('Send data to start queue for check phone number status...')
+        start_exchange = await channel.declare_exchange(settings.START_EXCHANGE_NAME, ExchangeType.DIRECT, durable=True)
+        start_queue = await channel.declare_queue(settings.START_QUEUE_NAME, durable=True)
+        await start_queue.bind(start_exchange, settings.START_QUEUE_NAME)
+
+        await start_exchange.publish(
+            aio_pika.Message(
+                msgpack.packb(check_phone_number_message),
+                # correlation_id=correlation_id_ctx.get()
+            ),
+            settings.START_QUEUE_NAME
+        )
+
+    async with channel_pool.acquire() as channel:  # type: aio_pika.Channel
+        reverse_start_queue = await channel.declare_queue(
+            settings.USER_CHECK_START_QUEUE_TEMPLATE.format(
+                telegram_id=message.from_user.id
+            ),
+            durable=True,
+        )
+
+        retries = 10
+        for _ in range(retries):
+            try:
+                check_phone_response_message = await reverse_start_queue.get(no_ack=True)
+                body = msgpack.unpackb(check_phone_response_message.body)
+                break
+            except QueueEmpty:
+                await asyncio.sleep(1)
+
+        # if not body:
+        #     state_data = await state.get_data()
+        #     await state.clear()
+        #     await state.update_data(state_data)
+        #     return
+        await state.update_data(flag=body['flag'])
+        if not body['flag']:
+            await message.answer('Этот номер телефона уже используется другим пользователем!')
+            return
     
     state_data = await state.get_data()
     await state.clear()

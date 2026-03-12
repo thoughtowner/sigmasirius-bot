@@ -74,23 +74,10 @@
     },
 
     {
-      "name": "add_application_form_statuses",
+      "name": "add_rooms",
       "type": "debugpy",
       "request": "launch",
-      "program": "${workspaceFolder}/scripts/add_application_form_statuses.py",
-      "cwd": "${workspaceFolder}",
-      "env": {
-        "PYTHONUNBUFFERED": "1",
-        "PYTHONPATH": "${workspaceFolder}"
-      },
-      "console": "integratedTerminal"
-    },
-
-    {
-      "name": "add_roles",
-      "type": "debugpy",
-      "request": "launch",
-      "program": "${workspaceFolder}/scripts/add_roles.py",
+      "program": "${workspaceFolder}/scripts/add_rooms.py",
       "cwd": "${workspaceFolder}",
       "env": {
         "PYTHONUNBUFFERED": "1",

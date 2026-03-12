@@ -23,9 +23,15 @@ from aiogram import Bot
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from src.templates.env import render
+import asyncio
 
 from consumers.start_consumer.handlers.start import handle_start_event
 from consumers.start_consumer.handlers.check_start import handle_check_start_event
+from consumers.start_consumer.handlers.check_phone_number import handle_check_phone_number_event
+from consumers.start_consumer.handlers.assign_repairman import (
+    handle_assign_repairman_event,
+    handle_remove_repairman_event,
+)
 
 from .metrics import TOTAL_RECEIVED_MESSAGES
 
@@ -44,16 +50,40 @@ async def start_consumer() -> None:
         start_queue = await channel.declare_queue(settings.START_QUEUE_NAME, durable=True)
 
         logger.info('Start consumer started!')
-        async with start_queue.iterator() as queue_iter:
-            async for message in queue_iter: # type: aio_pika.Message
-                TOTAL_RECEIVED_MESSAGES.inc()
-                async with message.process():
-                    # correlation_id_ctx.set(message.correlation_id)
+        try:
+            async with start_queue.iterator() as queue_iter:
+                async for message in queue_iter: # type: aio_pika.Message
+                    TOTAL_RECEIVED_MESSAGES.inc()
+                    try:
+                        async with message.process():
+                            # correlation_id_ctx.set(message.correlation_id)
 
-                    body = msgpack.unpackb(message.body)
-                    logger.info("Received message %s", body)
+                            body = msgpack.unpackb(message.body)
+                            logger.info("Received message %s", body)
 
-                    if body['event'] == 'start':
-                        await handle_start_event(body)
-                    elif body['event'] == 'check_start':
-                        await handle_check_start_event(body)
+                            if body['event'] == 'start':
+                                await handle_start_event(body)
+                            elif body['event'] == 'check_start':
+                                await handle_check_start_event(body)
+                            elif body['event'] == 'check_phone_number':
+                                await handle_check_phone_number_event(body)
+                            elif body['event'] == 'assign_repairman':
+                                await handle_assign_repairman_event(body)
+                            elif body['event'] == 'remove_repairman':
+                                await handle_remove_repairman_event(body)
+                    except asyncio.CancelledError:
+                        # shutdown in progress
+                        raise
+                    except Exception:
+                        logger.exception('Error processing message')
+        except asyncio.CancelledError:
+            logger.info('Start consumer cancelled')
+        except KeyboardInterrupt:
+            logger.info('Start consumer interrupted by KeyboardInterrupt')
+        except Exception:
+            logger.exception('Start consumer failed')
+        finally:
+            try:
+                await bot.close()
+            except Exception:
+                pass

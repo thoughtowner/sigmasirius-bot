@@ -6,7 +6,7 @@ from aio_pika import ExchangeType
 from sqlalchemy.exc import IntegrityError
 
 from ..model.models import User, ApplicationForm, Reservation, ReservationStatus
-from sqlalchemy import select
+from sqlalchemy import select, exists
 
 from ..schema import CheckReservationMessage
 
@@ -49,11 +49,17 @@ async def handle_check_reservation_event(message): # TODO async def handle_check
             logger.info('User is not eligible to create reservation: %s', message)
         else:
             existing_res_query = await db.execute(
-                select(Reservation).filter(
-                    (Reservation.user_id == user_id) &
-                    ((Reservation.status == ReservationStatus.AWAITING_EXECUTION) | (Reservation.status == ReservationStatus.IN_PROGRESS))
+                select(
+                    exists().where(
+                        (Reservation.user_id == user_id) &
+                        (
+                            (Reservation.status == ReservationStatus.UNCONFIRM) |
+                            (Reservation.status == ReservationStatus.IN_PROGRESS)
+                        )
+                    )
                 )
             )
+
             existing_res = existing_res_query.scalar()
 
             if existing_res:

@@ -10,7 +10,7 @@ from sqlalchemy import select
 from src.model.models import User
 
 
-class AuthMiddleware(BaseMiddleware):
+class ResidentMiddleware(BaseMiddleware):
 
     async def __call__(
         self,

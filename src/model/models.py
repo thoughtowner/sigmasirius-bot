@@ -22,7 +22,7 @@ class RoomClass(enum.Enum):
 
 
 class ReservationStatus(enum.Enum):
-    AWAITING_EXECUTION = "awaiting_execution"
+    UNCONFIRM = "unconfirm"
     IN_PROGRESS = "in_progress"
     COMPLETED = "completed"
 
@@ -37,9 +37,10 @@ class User(Base):
     phone_number: Mapped[str] = mapped_column(String, unique=True, nullable=False)
     is_repairman: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     is_admin: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    got_role_from_date: Mapped[date] = mapped_column(Date, nullable=False, default=date.today)
 
-    application_forms: Mapped[List['ApplicationForm']] = relationship(back_populates='user')
-    reservations: Mapped[List['Reservation']] = relationship(back_populates='user')
+    application_forms: Mapped[List['ApplicationForm']] = relationship(back_populates='user', cascade='all, delete-orphan', passive_deletes=True)
+    reservations: Mapped[List['Reservation']] = relationship(back_populates='user', cascade='all, delete-orphan', passive_deletes=True)
 
 
 class Room(Base):
@@ -49,12 +50,13 @@ class Room(Base):
 
     building: Mapped[int] = mapped_column(BigInteger, nullable=False)
     entrance: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    flour: Mapped[int] = mapped_column(BigInteger, nullable=False)
     room_number: Mapped[int] = mapped_column(BigInteger, nullable=False)
     full_room_number: Mapped[str] = mapped_column(String, unique=True, nullable=False)
     room_class: Mapped[RoomClass] = mapped_column(Enum(RoomClass), nullable=False)
     people_quantity: Mapped[int] = mapped_column(BigInteger, nullable=False)
 
-    reservations: Mapped[List["Reservation"]] = relationship(back_populates="room")
+    reservations: Mapped[List["Reservation"]] = relationship(back_populates="room", cascade='all, delete-orphan', passive_deletes=True)
 
 
 class Reservation(Base):
@@ -71,13 +73,13 @@ class Reservation(Base):
     status: Mapped[ReservationStatus] = mapped_column(
         Enum(ReservationStatus),
         nullable=False,
-        default=ReservationStatus.AWAITING_EXECUTION
+        default=ReservationStatus.UNCONFIRM
     )
 
-    user_id: Mapped[UUID] = mapped_column(ForeignKey("users.id"))
+    user_id: Mapped[UUID] = mapped_column(ForeignKey("users.id", ondelete='CASCADE'))
     user: Mapped["User"] = relationship(back_populates="reservations")
 
-    room_id: Mapped[UUID | None] = mapped_column(ForeignKey("rooms.id"), nullable=True)
+    room_id: Mapped[UUID | None] = mapped_column(ForeignKey("rooms.id", ondelete='CASCADE'), nullable=True)
     room: Mapped["Room | None"] = relationship(back_populates="reservations")
 
 
@@ -91,10 +93,10 @@ class ApplicationForm(Base):
 
     status: Mapped[ApplicationFormStatus] = mapped_column(Enum(ApplicationFormStatus), nullable=False, default=ApplicationFormStatus.NOT_COMPLETED)
 
-    user_id: Mapped[UUID] = mapped_column(ForeignKey('users.id'))
+    user_id: Mapped[UUID] = mapped_column(ForeignKey('users.id', ondelete='CASCADE'))
     user: Mapped['User'] = relationship(back_populates='application_forms')
 
-    telegram_ids_and_message_ids: Mapped[List['TelegramIdAndMessageId']] = relationship(back_populates='application_form')
+    telegram_ids_and_message_ids: Mapped[List['TelegramIdAndMessageId']] = relationship(back_populates='application_form', cascade='all, delete-orphan', passive_deletes=True)
 
 
 class TelegramIdAndMessageId(Base):
@@ -109,5 +111,5 @@ class TelegramIdAndMessageId(Base):
     telegram_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
     message_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
 
-    application_form_id: Mapped[UUID] = mapped_column(ForeignKey('application_forms.id'))
+    application_form_id: Mapped[UUID] = mapped_column(ForeignKey('application_forms.id', ondelete='CASCADE'))
     application_form: Mapped['ApplicationForm'] = relationship(back_populates='telegram_ids_and_message_ids')

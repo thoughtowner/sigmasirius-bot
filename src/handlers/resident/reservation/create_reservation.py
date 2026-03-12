@@ -26,6 +26,7 @@ from src.commands import CREATE_RESERVATION
 from src.logger import LOGGING_CONFIG, logger
 import logging.config
 from src.templates.env import render
+from datetime import datetime
 
 from aio_pika.exceptions import QueueEmpty
 import asyncio
@@ -118,6 +119,10 @@ async def enter_check_in_date(message: Message, state: FSMContext):
     except Exception:
         await message.answer(msg.INVALID_DATE)
         return
+    from datetime import date as _date
+    if check_in_date < _date.today():
+        await message.answer(msg.DATE_SHOULD_BE_TODAY_OR_LATER)
+        return
     await state.update_data(check_in_date=str(check_in_date))
     await state.set_state(Reservation.eviction_date)
     await message.answer(msg.ENTER_EVICTION_DATE)
@@ -127,10 +132,14 @@ async def enter_check_in_date(message: Message, state: FSMContext):
 async def enter_eviction_date(message: Message, state: FSMContext):
     date_text = message.text
     try:
-        from datetime import datetime
-        eviction_date = datetime.strptime(date_text, '%Y-%m-%d').date()
+        eviction_date = datetime.strptime(date_text, "%Y-%m-%d").date()
     except Exception:
         await message.answer(msg.INVALID_DATE)
+        return
+    data = await state.get_data()
+    check_in_date = datetime.strptime(data["check_in_date"], "%Y-%m-%d").date()
+    if eviction_date < check_in_date:
+        await message.answer(msg.DATE_SHOULD_BE_TODAY_OR_LATER)
         return
     await state.update_data(eviction_date=str(eviction_date))
 

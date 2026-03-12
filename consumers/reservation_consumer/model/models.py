@@ -22,7 +22,7 @@ class RoomClass(enum.Enum):
 
 
 class ReservationStatus(enum.Enum):
-    AWAITING_EXECUTION = "awaiting_execution"
+    UNCONFIRM = "unconfirm"
     IN_PROGRESS = "in_progress"
     COMPLETED = "completed"
 
@@ -37,6 +37,7 @@ class User(Base):
     phone_number: Mapped[str] = mapped_column(String, unique=True, nullable=False)
     is_repairman: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     is_admin: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    got_role_from_date: Mapped[date] = mapped_column(Date, nullable=False, default=date.today)
 
     application_forms: Mapped[List['ApplicationForm']] = relationship(back_populates='user')
     reservations: Mapped[List['Reservation']] = relationship(back_populates='user')
@@ -49,6 +50,7 @@ class Room(Base):
 
     building: Mapped[int] = mapped_column(BigInteger, nullable=False)
     entrance: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    flour: Mapped[int] = mapped_column(BigInteger, nullable=False)
     room_number: Mapped[int] = mapped_column(BigInteger, nullable=False)
     full_room_number: Mapped[str] = mapped_column(String, unique=True, nullable=False)
     room_class: Mapped[RoomClass] = mapped_column(Enum(RoomClass), nullable=False)
@@ -71,7 +73,7 @@ class Reservation(Base):
     status: Mapped[ReservationStatus] = mapped_column(
         Enum(ReservationStatus),
         nullable=False,
-        default=ReservationStatus.AWAITING_EXECUTION
+        default=ReservationStatus.UNCONFIRM
     )
 
     user_id: Mapped[UUID] = mapped_column(ForeignKey("users.id"))

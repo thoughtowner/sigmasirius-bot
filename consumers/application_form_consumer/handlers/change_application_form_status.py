@@ -6,7 +6,7 @@ from ..storage.db import async_session
 from aio_pika import ExchangeType
 from sqlalchemy.exc import IntegrityError
 
-from ..model.models import User, ApplicationForm, TelegramIdAndMessageId
+from ..model.models import User, ApplicationForm, TelegramIdAndMessageId, ApplicationFormStatus
 from sqlalchemy import insert, select, update, and_
 
 from ..schema.application_form_for_repairman import ApplicationFormForRepairmanMessage
@@ -29,7 +29,7 @@ bot = Bot(token=settings.BOT_TOKEN, default=default)
 async def handle_change_application_form_status_event(message): # TODO async def handle_application_form_event(message: ApplicationFormStatusMessage)
     if message['action'] == 'take_application_form_for_processing':
         async with (async_session() as db):
-            new_status = ApplicationForm.Status(message['new_status'])
+            new_status = ApplicationFormStatus(message['new_status'])
 
             application_form_id_result = await db.execute(
                 select(TelegramIdAndMessageId.application_form_id).filter(and_(
@@ -141,7 +141,7 @@ async def handle_change_application_form_status_event(message): # TODO async def
 
     elif message['action'] == 'complete_application_form':
         async with async_session() as db:
-            new_status = ApplicationForm.Status(message['new_status'])
+            new_status = ApplicationFormStatus(message['new_status'])
 
             application_form_id_result = await db.execute(
                 select(TelegramIdAndMessageId.application_form_id).filter(and_(
@@ -210,7 +210,7 @@ async def handle_change_application_form_status_event(message): # TODO async def
 
     elif message['action'] == 'cancel_application_form':
         async with async_session() as db:
-            new_status = ApplicationForm.Status(message['new_status'])
+            new_status = ApplicationFormStatus(message['new_status'])
 
             application_form_id_result = await db.execute(
                 select(TelegramIdAndMessageId.application_form_id).filter(and_(

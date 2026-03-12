@@ -25,7 +25,7 @@ class Settings(BaseSettings):
 
     START_EXCHANGE_NAME: str = 'start_exchange'
     START_QUEUE_NAME: str = 'start_queue'
-    REVERSE_START_QUEUE_NAME: str = 'reverse_start_queue'
+    USER_CHECK_START_QUEUE_TEMPLATE: str = 'user_check_start_queue.{telegram_id}'
 
     RESERVATION_EXCHANGE_NAME: str = 'reservation_exchange'
     RESERVATION_QUEUE_NAME: str = 'reservation_queue'
@@ -33,6 +33,8 @@ class Settings(BaseSettings):
 
     APPLICATION_FORM_EXCHANGE_NAME: str = 'application_form_exchange'
     APPLICATION_FORM_QUEUE_NAME: str = 'application_form_queue'
+    STATS_EXCHANGE_NAME: str = 'stats_exchange'
+    STATS_QUEUE_NAME: str = 'stats_queue'
 
 
     @property

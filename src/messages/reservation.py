@@ -5,6 +5,8 @@ CHOOSE_ROOM_CLASS = 'Выберите класс номера: economy, comfort 
 ENTER_CHECK_IN_DATE = 'Укажите дату заезда в формате YYYY-MM-DD'
 ENTER_EVICTION_DATE = 'Укажите дату выселения в формате YYYY-MM-DD'
 
+ENTER_PHONE_NUMBER = 'Введите свой номер телефона (например, "+7 (999) 999-99-99")'
+
 # validation error messages
 
 INVALID_PEOPLE_QUANTITY = 'Неверное количество людей! Введите целое число'
@@ -12,6 +14,9 @@ PEOPLE_QUANTITY_LESS_THAN_ZERO = 'Неверное количество люде
 INVALID_ROOM_CLASS = 'Неверный класс номера! Используйте economy, comfort или luxury.'
 INVALID_DATE = 'Неверный формат даты! Используйте YYYY-MM-DD.'
 INVALID_CHECK_RESERVATION_DATA_ANSWER = 'Неверный ответ! Выберите ответ из списка'
+DATE_SHOULD_BE_TODAY_OR_LATER = 'Дата выезда не должна быть раньше даты въезда!'
+
+INVALID_PHONE_NUMBER_FORMAT = 'Неверный формат номера телефона!'
 
 # info messages
 

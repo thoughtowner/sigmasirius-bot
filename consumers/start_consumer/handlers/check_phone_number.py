@@ -30,18 +30,18 @@ from ..storage.rabbit import channel_pool
 default = DefaultBotProperties(parse_mode=ParseMode.HTML)
 bot = Bot(token=settings.BOT_TOKEN, default=default)
 
-async def handle_check_start_event(message): # TODO async def handle_check_start_event(message: CheckStartMessage)
+async def handle_check_phone_number_event(message): # TODO async def handle_check_start_event(message: CheckStartMessage)
     async with async_session() as db:
         user_query = await db.execute(
-            select(User).filter(User.telegram_id == message['telegram_id']))
+            select(User).filter(User.phone_number == message['phone_number']))
         user = user_query.scalar()
 
         if user:
             flag = False
-            logger.info('This user with this data is already start: %s', message)
+            logger.info('This phone number is already in use by another user: %s', message)
         else:
             flag = True
-            logger.info('This user with this data is not start: %s', message)
+            logger.info('This phone number is not in use: %s', message)
 
         async with channel_pool.acquire() as _channel:
             start_exchange = await _channel.declare_exchange(settings.START_EXCHANGE_NAME, ExchangeType.DIRECT, durable=True)

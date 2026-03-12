@@ -6,7 +6,7 @@ from ..storage.db import async_session
 from aio_pika import ExchangeType
 from sqlalchemy.exc import IntegrityError
 
-from ..model.models import User, ApplicationForm, TelegramIdAndMessageId
+from ..model.models import User, ApplicationForm, ApplicationFormStatus, TelegramIdAndMessageId
 from sqlalchemy import insert, select
 
 from ..schema.application_form_for_repairman import ApplicationFormForRepairmanMessage
@@ -40,7 +40,7 @@ async def handle_add_application_form_event(message): # TODO async def handle_ap
         application_form_query = insert(ApplicationForm).values(
             title=message['title'],
             description=message['description'],
-            status=ApplicationForm.Status(message['status']),
+            status=ApplicationFormStatus(message['status']),
             user_id=user_id
         ).returning(ApplicationForm.id)
         application_form_result = await db.execute(application_form_query)
@@ -72,9 +72,9 @@ async def handle_add_application_form_event(message): # TODO async def handle_ap
         )
 
         parsed_application_form_for_resident = ApplicationFormForResidentMessage(
-            title=application_form_for_repairman[3],
-            description=application_form_for_repairman[4],
-            status=parse_status(application_form_for_repairman[5].value)
+            title=application_form_for_repairman[2],
+            description=application_form_for_repairman[3],
+            status=parse_status(application_form_for_repairman[4].value)
         )
 
         repairmen_telegram_id_query = await db.execute(
