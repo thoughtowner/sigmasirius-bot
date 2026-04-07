@@ -19,7 +19,7 @@ bot = Bot(token=settings.BOT_TOKEN, default=default)
 
 async def handle_assign_repairman_event(message):
     phone = message.get('phone_number')
-    admin_id = message.get('admin_telegram_id')
+    admin_id = message.get('telegram_id')
 
     async with async_session() as db:
         user_q = await db.execute(select(User).filter(User.phone_number == phone))
@@ -56,7 +56,7 @@ async def handle_assign_repairman_event(message):
 
 async def handle_remove_repairman_event(message):
     phone = message.get('phone_number')
-    admin_id = message.get('admin_telegram_id')
+    admin_id = message.get('telegram_id')
 
     async with async_session() as db:
         user_q = await db.execute(select(User).filter(User.phone_number == phone))

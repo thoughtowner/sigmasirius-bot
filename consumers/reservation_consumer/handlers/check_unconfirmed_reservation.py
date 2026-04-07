@@ -9,7 +9,7 @@ from datetime import date
 
 
 async def handle_check_unconfirmed_reservation_event(message):
-    # message: {'event':'check_unconfirmed_reservation', 'phone_number':..., 'telegram_id': <admin_telegram_id>}
+    # message: {'event':'check_unconfirmed_reservation', 'phone_number':..., 'telegram_id': <telegram_id>}
     admin_queue = settings.USER_RESERVATION_QUEUE_TEMPLATE.format(telegram_id=message.get('telegram_id'))
 
     async with async_session() as db:

@@ -3,7 +3,7 @@ from aiogram import F
 from aiogram.fsm.context import FSMContext
 
 from ..router import router
-from src.commands import ASSIGN_REPAIRMAN, REMOVE_REPAIRMAN
+from src.commands import HIRE_REPAIRMAN, FIRE_REPAIRMAN
 from src.storage.db import async_session
 from src.model.models import User
 from sqlalchemy import select, update
@@ -18,15 +18,16 @@ from aio_pika.exceptions import QueueEmpty
 import asyncio
 
 
-@router.message(F.text == ASSIGN_REPAIRMAN)
-async def assign_repairman_start(message: Message, state: FSMContext):
-    await state.set_state(AdminRepairman.assign_phone)
+@router.message(F.text == HIRE_REPAIRMAN)
+async def hire_repairman(message: Message, state: FSMContext):
     await message.answer('Введите номер телефона пользователя в формате +79991234567')
+    try:
+        phone_number = PhoneNumberValidator().validate(message)
+        await state.update_data(phone_number=phone_number)
+    except validation.InvalidPhoneNumberFormatError:
+        await message.answer(msg.INVALID_PHONE_NUMBER_FORMAT)
+        return
 
-
-@router.message(AdminRepairman.assign_phone)
-async def handle_assign_phone(message: Message, state: FSMContext):
-    phone = message.text.strip()
     admin_id = message.from_user.id
 
     async with channel_pool.acquire() as channel:
@@ -34,8 +35,8 @@ async def handle_assign_phone(message: Message, state: FSMContext):
         await start_exchange.publish(
             aio_pika.Message(msgpack.packb({
                 'event': 'assign_repairman',
-                'phone_number': phone,
-                'admin_telegram_id': admin_id,
+                'phone_number': phone_number,
+                'telegram_id': admin_id,
             })),
             settings.START_QUEUE_NAME
         )
@@ -67,8 +68,8 @@ async def handle_assign_phone(message: Message, state: FSMContext):
     await state.update_data(state_data)
 
 
-@router.message(F.text == REMOVE_REPAIRMAN)
-async def remove_repairman_start(message: Message, state: FSMContext):
+@router.message(F.text == FIRE_REPAIRMAN)
+async def fire_repairman(message: Message, state: FSMContext):
     await state.set_state(AdminRepairman.remove_phone)
     await message.answer('Введите номер телефона пользователя для увольнения ремонтника в формате +79991234567')
 
@@ -84,7 +85,7 @@ async def handle_remove_phone(message: Message, state: FSMContext):
             aio_pika.Message(msgpack.packb({
                 'event': 'remove_repairman',
                 'phone_number': phone,
-                'admin_telegram_id': admin_id,
+                'telegram_id': admin_id,
             })),
             settings.START_QUEUE_NAME
         )

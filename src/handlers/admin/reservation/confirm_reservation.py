@@ -87,13 +87,13 @@ async def handle_admin_phone(message: Message, state: FSMContext):
             except Exception:
                 await asyncio.sleep(1)
 
-    state_data = await state.get_data()
-    await state.clear()
-    await state.update_data(state_data)
-
     if not body or not body.get('found'):
         await message.answer('Не найдено неподтверждённых броней по этому номеру или бронь не на сегодня.')
         return
+    
+    state_data = await state.get_data()
+    await state.clear()
+    await state.update_data(state_data)
 
     reservation = body['reservation']
     res_text = (
@@ -121,7 +121,7 @@ async def handle_pick_room_cb(query):
             aio_pika.Message(msgpack.packb({
                 'event': 'pick_room',
                 'reservation_id': reservation_id,
-                'admin_telegram_id': admin_id,
+                'telegram_id': admin_id,
                 'callback_query_message_id': query.message.message_id,
                 'callback_chat_id': query.message.chat.id,
             })),
@@ -143,7 +143,7 @@ async def handle_assign_room_cb(query):
             aio_pika.Message(msgpack.packb({
                 'event': 'assign_room',
                 'token': token,
-                'admin_telegram_id': admin_id,
+                'telegram_id': admin_id,
                 'callback_chat_id': query.message.chat.id,
                 'callback_message_id': query.message.message_id,
             })),

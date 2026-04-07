@@ -5,7 +5,7 @@ import msgpack
 from aio_pika import ExchangeType
 from src.storage.rabbit import channel_pool
 from config.settings import settings
-from .router import router
+from ..router import router
 from src.commands import ADMIN_STATS
 from aio_pika.exceptions import QueueEmpty
 import asyncio

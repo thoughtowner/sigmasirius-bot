@@ -16,13 +16,15 @@ import json
 from uuid import uuid4
 from datetime import date
 
+from consumers.start_consumer.handlers.start import handle_start_event
+
 default = DefaultBotProperties(parse_mode=ParseMode.HTML)
 bot = Bot(token=settings.BOT_TOKEN, default=default)
 
 
 async def handle_pick_room_event(message):
     reservation_id = message.get('reservation_id')
-    admin_id = message.get('admin_telegram_id')
+    admin_id = message.get('telegram_id')
     callback_chat_id = message.get('callback_chat_id')
     callback_message_id = message.get('callback_query_message_id')
 
@@ -121,7 +123,7 @@ async def handle_pick_room_event(message):
 
 async def handle_assign_room_event(message):
     token = message.get('token')
-    admin_id = message.get('admin_telegram_id')
+    admin_id = message.get('telegram_id')
     callback_chat_id = message.get('callback_chat_id')
     callback_message_id = message.get('callback_message_id')
 
@@ -223,3 +225,5 @@ async def handle_assign_room_event(message):
         await bot.send_message(chat_id=admin_id, text='Номер привязан, бронь подтверждена')
     except Exception:
         logger.exception('Failed to notify admin after assign')
+    finally:
+        await handle_start_event(message=message)
