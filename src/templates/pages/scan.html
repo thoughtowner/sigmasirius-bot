@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+
+{% block title %}Scan QR Code{% endblock %}
+
+{% block content %}
+<h2>Сканер QR-кодов</h2>
+<div style="position: relative; overflow: hidden;" id="scanArea">
+    <video style="width: 100%; height: 300px; object-fit: cover;" id="video"></video>
+    <canvas style="display: none;" id="canvas"></canvas>
+    <div style="display: none;" class="scanner-line" id="scannerLine"></div>
+</div>
+<button id="toggleScanBtn">Начать сканирование</button>
+<div style="display: none;" id="resultArea">
+    <p id="scanResult"></p>
+    <button id="confirmBtn">Подтвердить</button>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="/static/js/scan.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    document.getElementById('toggleScanBtn').addEventListener('click', toggleScanning);
+    const confirm = document.getElementById('confirmBtn');
+    if (confirm) confirm.addEventListener('click', sendToTelegram);
+});
+</script>
+{% endblock %}

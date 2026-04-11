@@ -13,7 +13,7 @@ from ..schema import ReservationMessage
 from aiogram import Bot
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
-from src.templates.env import render
+from src.msg_templates.env import render
 from datetime import datetime
 
 from consumers.start_consumer.handlers.start import handle_start_event
@@ -28,6 +28,7 @@ import msgpack
 
 from ..logger import LOGGING_CONFIG, logger, correlation_id_ctx
 from ..storage.rabbit import channel_pool
+import uuid
 
 
 default = DefaultBotProperties(parse_mode=ParseMode.HTML)
@@ -40,6 +41,7 @@ async def handle_reservation_event(message): # TODO async def handle_reservation
         user_id = user_result.scalar()
 
         await db.execute(insert(Reservation).values(
+            id=uuid.UUID(message['reservation_id']),
             people_quantity=int(message['people_quantity']),
             room_class=RoomClass(message['room_class']),
             check_in_date=datetime.strptime(message['check_in_date'], '%Y-%m-%d').date(),

@@ -2,7 +2,7 @@ from jinja2 import Environment, PackageLoader, select_autoescape
 
 
 env = Environment(
-    loader=PackageLoader("src", 'templates'),
+    loader=PackageLoader("src", 'msg_templates'),
     autoescape=select_autoescape()
 )
 

@@ -25,11 +25,17 @@ from src.keyboard_buttons.texts import ROOM_CLASSES, CHECK_RESERVATION_DATA_ANSW
 from src.commands import CREATE_RESERVATION
 from src.logger import LOGGING_CONFIG, logger
 import logging.config
-from src.templates.env import render
+from src.msg_templates.env import render
 from datetime import datetime
 
 from aio_pika.exceptions import QueueEmpty
 import asyncio
+
+import uuid
+import io
+import qrcode
+from aiogram.types import BufferedInputFile
+from src.keyboard_buttons.qr import main_keyboard
 
 
 logging.config.dictConfig(LOGGING_CONFIG)
@@ -139,7 +145,7 @@ async def enter_eviction_date(message: Message, state: FSMContext):
     data = await state.get_data()
     check_in_date = datetime.strptime(data["check_in_date"], "%Y-%m-%d").date()
     if eviction_date < check_in_date:
-        await message.answer(msg.DATE_SHOULD_BE_TODAY_OR_LATER)
+        await message.answer(msg.EVICION_DAYE_NOT_SHOULD_BE_LESS_THAN_CHECK_IN_DATE)
         return
     await state.update_data(eviction_date=str(eviction_date))
 
@@ -170,14 +176,40 @@ async def check_reservation_data(message: Message, state: FSMContext):
     await state.clear()
     await state.update_data(data)
 
+    reservation_id = uuid.uuid4()
+    logger.info('{reservation_id}')
+
     reservation_message = ReservationMessage(
         event='reservation',
+        reservation_id=str(reservation_id),
         telegram_id=data['telegram_id'],
         people_quantity=data['people_quantity'],
         room_class=data['room_class'],
         check_in_date=data['check_in_date'],
         eviction_date=data['eviction_date']
     )
+
+    qr_content = 'reservation/' + str(reservation_id)
+    # try to generate QR image and send to user
+    # try:
+    buf = io.BytesIO()
+    img = qrcode.make(qr_content)
+    img.save(buf, format='PNG')
+    buf.seek(0)
+    image_file = BufferedInputFile(file=buf.read(), filename='reservation_qr.png')
+    # import bot lazily to avoid circular import at module import time
+    from src.bot import bot
+    await bot.send_photo(chat_id=data['telegram_id'], photo=image_file,
+                            caption='Ваш QR-код для заселения. Покажите его на ресепшене.',
+                            reply_markup=main_keyboard())
+    # except Exception as e:
+    #     logger.exception('Failed to generate/send QR code, sending text fallback')
+    #     # fallback: send raw content
+    #     try:
+    #         from src.bot import bot
+    #         await bot.send_message(chat_id=data['telegram_id'], text=f'Ваш код: {qr_content}', reply_markup=main_keyboard())
+    #     except Exception:
+    #         logger.exception('Failed to send fallback message with QR content')
 
     async with channel_pool.acquire() as channel:  # type: aio_pika.Channel
         logger.info('Send data to reservation queue...')

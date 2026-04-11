@@ -13,7 +13,7 @@ from ..schema.start import StartMessage
 from aiogram import Bot
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
-from src.templates.env import render
+from src.msg_templates.env import render
 
 from aiogram.types import Message, InputFile, BufferedInputFile, InlineKeyboardButton, InlineKeyboardMarkup
 

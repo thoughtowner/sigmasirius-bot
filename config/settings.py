@@ -1,9 +1,15 @@
 from pydantic_settings import BaseSettings
 
+import os
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
 
 class Settings(BaseSettings):
+    #OWNER_TELEGRAM_ID: int
+
     BOT_TOKEN: str
     BOT_WEBHOOK_URL: str
+    BASE_SITE: str
 
     POSTGRES_USER: str
     POSTGRES_PASSWORD: str
@@ -48,5 +54,26 @@ class Settings(BaseSettings):
     class Config:
         env_file = "config/.env"
 
+    # model_config = SettingsConfigDict(
+    #     env_file=os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".env")
+    # )
+
+    # def get_webhook_url(self) -> str:
+    #     """Возвращает URL вебхука с кодированием специальных символов."""
+    #     return f"{self.BASE_SITE}/webhook"
+
 
 settings = Settings()
+
+# Ensure BASE_SITE is defined: prefer explicit env, otherwise derive from BOT_WEBHOOK_URL or fallback to localhost
+if not getattr(settings, 'BASE_SITE', None):
+    try:
+        wb = getattr(settings, 'BOT_WEBHOOK_URL', None)
+        if wb:
+            from urllib.parse import urlparse
+            parsed = urlparse(wb)
+            settings.BASE_SITE = f"{parsed.scheme}://{parsed.netloc}"
+        else:
+            settings.BASE_SITE = 'http://localhost:8000'
+    except Exception:
+        settings.BASE_SITE = 'http://localhost:8000'

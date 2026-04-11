@@ -32,10 +32,10 @@ ROOM_NUMBERS = {
                 {"room": 404, "people_quantity": 2, "room_class": "comfort"},
             ],
             "5": [
-                {"room": 501, "people_quantity": 2, "room_class": "luxury"},
-                {"room": 502, "people_quantity": 3, "room_class": "luxury"},
-                {"room": 503, "people_quantity": 3, "room_class": "luxury"},
-                {"room": 504, "people_quantity": 2, "room_class": "luxury"},
+                {"room": 501, "people_quantity": 1, "room_class": "luxury"},
+                {"room": 502, "people_quantity": 4, "room_class": "luxury"},
+                {"room": 503, "people_quantity": 4, "room_class": "luxury"},
+                {"room": 504, "people_quantity": 1, "room_class": "luxury"},
             ],
             "6": [
                 {"room": 601, "people_quantity": 2, "room_class": "luxury"},
@@ -70,10 +70,10 @@ ROOM_NUMBERS = {
                 {"room": 404, "people_quantity": 2, "room_class": "comfort"},
             ],
             "5": [
-                {"room": 501, "people_quantity": 2, "room_class": "luxury"},
-                {"room": 502, "people_quantity": 3, "room_class": "luxury"},
-                {"room": 503, "people_quantity": 3, "room_class": "luxury"},
-                {"room": 504, "people_quantity": 2, "room_class": "luxury"},
+                {"room": 501, "people_quantity": 1, "room_class": "luxury"},
+                {"room": 502, "people_quantity": 4, "room_class": "luxury"},
+                {"room": 503, "people_quantity": 4, "room_class": "luxury"},
+                {"room": 504, "people_quantity": 1, "room_class": "luxury"},
             ],
             "6": [
                 {"room": 601, "people_quantity": 2, "room_class": "luxury"},
@@ -110,10 +110,10 @@ ROOM_NUMBERS = {
                 {"room": 404, "people_quantity": 2, "room_class": "comfort"},
             ],
             "5": [
-                {"room": 501, "people_quantity": 2, "room_class": "luxury"},
-                {"room": 502, "people_quantity": 3, "room_class": "luxury"},
-                {"room": 503, "people_quantity": 3, "room_class": "luxury"},
-                {"room": 504, "people_quantity": 2, "room_class": "luxury"},
+                {"room": 501, "people_quantity": 1, "room_class": "luxury"},
+                {"room": 502, "people_quantity": 4, "room_class": "luxury"},
+                {"room": 503, "people_quantity": 4, "room_class": "luxury"},
+                {"room": 504, "people_quantity": 1, "room_class": "luxury"},
             ],
             "6": [
                 {"room": 601, "people_quantity": 2, "room_class": "luxury"},
@@ -148,10 +148,10 @@ ROOM_NUMBERS = {
                 {"room": 404, "people_quantity": 2, "room_class": "comfort"},
             ],
             "5": [
-                {"room": 501, "people_quantity": 2, "room_class": "luxury"},
-                {"room": 502, "people_quantity": 3, "room_class": "luxury"},
-                {"room": 503, "people_quantity": 3, "room_class": "luxury"},
-                {"room": 504, "people_quantity": 2, "room_class": "luxury"},
+                {"room": 501, "people_quantity": 1, "room_class": "luxury"},
+                {"room": 502, "people_quantity": 4, "room_class": "luxury"},
+                {"room": 503, "people_quantity": 4, "room_class": "luxury"},
+                {"room": 504, "people_quantity": 1, "room_class": "luxury"},
             ],
             "6": [
                 {"room": 601, "people_quantity": 2, "room_class": "luxury"},

@@ -14,7 +14,8 @@ PEOPLE_QUANTITY_LESS_THAN_ZERO = 'Неверное количество люде
 INVALID_ROOM_CLASS = 'Неверный класс номера! Используйте economy, comfort или luxury.'
 INVALID_DATE = 'Неверный формат даты! Используйте YYYY-MM-DD.'
 INVALID_CHECK_RESERVATION_DATA_ANSWER = 'Неверный ответ! Выберите ответ из списка'
-DATE_SHOULD_BE_TODAY_OR_LATER = 'Дата выезда не должна быть раньше даты въезда!'
+DATE_SHOULD_BE_TODAY_OR_LATER = 'Дата заезда должна быть сегодняшней или будущей!'
+EVICION_DAYE_NOT_SHOULD_BE_LESS_THAN_CHECK_IN_DATE = 'Дата выезда не должна быть раньше даты въезда!'
 
 INVALID_PHONE_NUMBER_FORMAT = 'Неверный формат номера телефона!'
 

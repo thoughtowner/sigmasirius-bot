@@ -15,7 +15,7 @@ from ..schema.application_form_for_resident import ApplicationFormForResidentMes
 from aiogram import Bot
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
-from src.templates.env import render
+from src.msg_templates.env import render
 
 import io
 from src.files_storage.storage_client import images_storage

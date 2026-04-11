@@ -14,7 +14,7 @@ from ..router import router
 from aiogram import Bot
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
-from src.templates.env import render
+from src.msg_templates.env import render
 
 from src.logger import LOGGING_CONFIG, logger
 

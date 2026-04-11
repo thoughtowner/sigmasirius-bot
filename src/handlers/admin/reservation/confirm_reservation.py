@@ -25,7 +25,7 @@ from src.validators.start.validators import PhoneNumberValidator
 from src.validators.start import errors as validation
 from src.logger import LOGGING_CONFIG, logger
 import logging.config
-from src.templates.env import render
+from src.msg_templates.env import render
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from src.storage.db import async_session
 from src.model.models import Room, Reservation, ReservationStatus, User
