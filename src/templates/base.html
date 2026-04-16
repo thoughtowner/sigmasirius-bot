@@ -19,20 +19,6 @@
     {% block content %}{% endblock %}
 </div>
 
-<nav class="nav-bar">
-    <a href="/" class="nav-item {% if active_tab == 'generate' %}active{% endif %}">
-        <img src="/static/img/generate.svg" alt="Генерация" class="nav-icon">
-        Генерация
-    </a>
-    <a href="/scan" class="nav-item {% if active_tab == 'scan' %}active{% endif %}">
-        <img src="/static/img/scan.svg" alt="Сканировать" class="nav-icon">
-        Сканировать
-    </a>
-    <a href="/upload" class="nav-item {% if active_tab == 'upload' %}active{% endif %}">
-        <img src="/static/img/upload.svg" alt="Загрузить" class="nav-icon">
-        Загрузить
-    </a>
-</nav>
 {% block extra_scripts %}{% endblock %}
 </body>
 </html>

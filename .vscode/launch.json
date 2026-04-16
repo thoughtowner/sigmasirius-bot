@@ -87,6 +87,19 @@
     },
 
     {
+      "name": "add_test_reservations",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/scripts/add_test_data/add_test_reservations.py",
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "PYTHONUNBUFFERED": "1",
+        "PYTHONPATH": "${workspaceFolder}"
+      },
+      "console": "integratedTerminal"
+    },
+
+    {
       "name": "give_user_admin_role",
       "type": "debugpy",
       "request": "launch",

@@ -87,10 +87,11 @@ async def check_start(message: Message, state: FSMContext):
 
             start_message = StartMessage(
                 event='start',
+                is_test_data=False,
                 telegram_id=state_data['telegram_id'],
                 full_name="null",
                 phone_number="null",
-                flag=state_data['flag']
+                # flag=state_data['flag']
             )
 
             async with channel_pool.acquire() as channel:  # type: aio_pika.Channel
@@ -193,9 +194,10 @@ async def enter_phone_number(message: Message, state: FSMContext):
     start_message = StartMessage(
         event='start',
         telegram_id=state_data['telegram_id'],
+        is_test_data=False,
         full_name=state_data['full_name'],
         phone_number=state_data['phone_number'],
-        flag=state_data['flag']
+        # flag=state_data['flag']
     )
 
     async with channel_pool.acquire() as channel:  # type: aio_pika.Channel

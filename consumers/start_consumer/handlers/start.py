@@ -43,10 +43,11 @@ async def handle_start_event(message):
             await db.execute(user_query)
             await db.commit()
             
-            await bot.send_message(
-                text='Добро пожаловать!',
-                chat_id=message['telegram_id']
-            )
+            if not message['is_test_data']:
+                await bot.send_message(
+                    text='Добро пожаловать!',
+                    chat_id=message['telegram_id']
+                )
 
         user_query = await db.execute(
             select(User).filter(User.telegram_id == message['telegram_id'])
@@ -61,33 +62,34 @@ async def handle_start_event(message):
         has_awaiting = any(r.status == ReservationStatus.UNCONFIRM for r in reservations)
         has_in_progress = any(r.status == ReservationStatus.IN_PROGRESS for r in reservations)
 
-        if user.is_admin:
-            await bot.send_message(
-                text=render('start/start_for_admin.jinja2'),
-                chat_id=message['telegram_id']
-            )
-
-        elif user.is_repairman:
-            await bot.send_message(
-                text=render('start/start_for_repairman.jinja2'),
-                chat_id=message['telegram_id']
-            )
-
-        else:
-            if has_in_progress:
+        if not message['is_test_data']:
+            if user.is_admin:
                 await bot.send_message(
-                    text=render('start/start_for_resident_with_active_reservation.jinja2'),
+                    text=render('start/start_for_admin.jinja2'),
                     chat_id=message['telegram_id']
                 )
 
-            elif has_awaiting:
+            elif user.is_repairman:
                 await bot.send_message(
-                    text=render('start/start_for_resident_with_reservation.jinja2'),
+                    text=render('start/start_for_repairman.jinja2'),
                     chat_id=message['telegram_id']
                 )
 
             else:
-                await bot.send_message(
-                    text=render('start/start_for_resident_without_reservation.jinja2'),
-                    chat_id=message['telegram_id']
-                )
+                if has_in_progress:
+                    await bot.send_message(
+                        text=render('start/start_for_resident_with_active_reservation.jinja2'),
+                        chat_id=message['telegram_id']
+                    )
+
+                elif has_awaiting:
+                    await bot.send_message(
+                        text=render('start/start_for_resident_with_reservation.jinja2'),
+                        chat_id=message['telegram_id']
+                    )
+
+                else:
+                    await bot.send_message(
+                        text=render('start/start_for_resident_without_reservation.jinja2'),
+                        chat_id=message['telegram_id']
+                    )

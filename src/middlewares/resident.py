@@ -11,7 +11,6 @@ from src.model.models import User
 
 
 class ResidentMiddleware(BaseMiddleware):
-
     async def __call__(
         self,
         handler: Callable[[TelegramObject, Dict[str, Any]], Awaitable[Any]],

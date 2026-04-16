@@ -38,31 +38,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             await bot.delete_webhook()
         polling_task = asyncio.create_task(dp.start_polling(bot, handle_signals=False))
 
-    # try:
-    #     wh_info = await bot.get_webhook_info()
-    # except Exception:
-    #     wh_info = None
-
-    # # Determine webhook target: prefer ngrok public url when available
-    # target_url = settings.BOT_WEBHOOK_URL or None
-    # try:
-    #     with urllib.request.urlopen('http://127.0.0.1:4040/api/tunnels', timeout=0.5) as resp:
-    #         data = json.load(resp)
-    #         tunnels = data.get('tunnels', [])
-    #         if tunnels:
-    #             public = tunnels[0].get('public_url')
-    #             if public:
-    #                 target_url = public.rstrip('/') + '/tg/webhook'
-    # except Exception:
-    #     pass
-
-    # if target_url:
-    #     current = getattr(wh_info, 'url', None)
-    #     if current != target_url:
-    #         await bot.set_webhook(target_url)
-    # else:
-    #     polling_task = asyncio.create_task(dp.start_polling(bot, handle_signals=False))
-
     logger.info("Finished start")
     yield
 

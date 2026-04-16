@@ -122,47 +122,79 @@ async def handle_pick_room_event(message):
 
 
 async def handle_assign_room_event(message):
+    # Support two modes:
+    # 1) token-based: callback from Telegram buttons (legacy flow)
+    # 2) direct payload: web-admin picks room in WebApp and sends room_id + reservation_id
     token = message.get('token')
     admin_id = message.get('telegram_id')
     callback_chat_id = message.get('callback_chat_id')
     callback_message_id = message.get('callback_message_id')
 
-    key = f'assign_mapping:{token}'
-    mapping_raw = await redis_storage.get(key)
-    if not mapping_raw:
-        try:
-            await bot.send_message(chat_id=admin_id, text='Данные кнопки устарели, повторите выбор')
-        except Exception:
-            logger.exception('Failed to notify admin mapping missing')
-        return
+    reservation_id = None
+    room_id = None
+    group_token = None
 
-    if isinstance(mapping_raw, (bytes, bytearray)):
-        mapping_raw = mapping_raw.decode()
+    if token:
+        key = f'assign_mapping:{token}'
+        mapping_raw = await redis_storage.get(key)
+        if not mapping_raw:
+            try:
+                if not message['is_test_data']:
+                    await bot.send_message(chat_id=admin_id, text='Данные кнопки устарели, повторите выбор')
+            except Exception:
+                logger.exception('Failed to notify admin mapping missing')
+            return
 
-    mapping = json.loads(mapping_raw)
-    reservation_id = mapping.get('reservation_id')
-    room_id = mapping.get('room_id')
-    group_token = mapping.get('group_token')
-    await redis_storage.delete(key)
+        if isinstance(mapping_raw, (bytes, bytearray)):
+            mapping_raw = mapping_raw.decode()
 
-    # fetch and delete group messages
-    if group_token:
-        group_key = f'assign_group:{group_token}'
-        group_raw = await redis_storage.get(group_key)
-        if group_raw:
-            if isinstance(group_raw, (bytes, bytearray)):
-                group_raw = group_raw.decode()
-            group = json.loads(group_raw)
-            chat_id = group.get('chat_id')
-            message_ids = group.get('message_ids', [])
-            for mid in message_ids:
-                try:
-                    await bot.delete_message(chat_id=chat_id, message_id=int(mid))
-                except Exception:
-                    pass
-            await redis_storage.delete(group_key)
+        mapping = json.loads(mapping_raw)
+        reservation_id = mapping.get('reservation_id')
+        room_id = mapping.get('room_id')
+        group_token = mapping.get('group_token')
+        await redis_storage.delete(key)
+
+        # fetch and delete group messages
+        if group_token:
+            group_key = f'assign_group:{group_token}'
+            group_raw = await redis_storage.get(group_key)
+            if group_raw:
+                if isinstance(group_raw, (bytes, bytearray)):
+                    group_raw = group_raw.decode()
+                group = json.loads(group_raw)
+                chat_id = group.get('chat_id')
+                message_ids = group.get('message_ids', [])
+                for mid in message_ids:
+                    try:
+                        if not message['is_test_data']:
+                            await bot.delete_message(chat_id=chat_id, message_id=int(mid))
+                    except Exception:
+                        pass
+                await redis_storage.delete(group_key)
+    else:
+        # direct web assignment
+        reservation_id = message.get('reservation_id')
+        room_id = message.get('room_id')
+        # no group_token handling for web flow
+        if not reservation_id or not room_id:
+            try:
+                if not message['is_test_data']:
+                    await bot.send_message(chat_id=admin_id, text='Неполные данные для привязки номера')
+            except Exception:
+                logger.exception('Failed to notify admin missing data')
+            return
 
     async with async_session() as db:
+        # normalize ids: they may come as str UUIDs
+        try:
+            import uuid as _uuid
+            if isinstance(reservation_id, str):
+                reservation_id = _uuid.UUID(reservation_id)
+            if isinstance(room_id, str):
+                room_id = _uuid.UUID(room_id)
+        except Exception:
+            pass
+
         res_q = await db.execute(select(Reservation).filter(Reservation.id == reservation_id))
         reservation = res_q.scalar_one_or_none()
 
@@ -171,7 +203,8 @@ async def handle_assign_room_event(message):
 
         if not reservation or not room:
             try:
-                await bot.send_message(chat_id=admin_id, text='Ошибка при привязке номера')
+                if not message['is_test_data']:
+                    await bot.send_message(chat_id=admin_id, text='Ошибка при привязке номера')
             except Exception:
                 logger.exception('Failed to notify admin assign error')
             return
@@ -188,7 +221,8 @@ async def handle_assign_room_event(message):
         conflict = overlap_q.first()
         if conflict:
             try:
-                await bot.send_message(chat_id=admin_id, text='Номер уже занят на выбранные даты')
+                if not message['is_test_data']:
+                    await bot.send_message(chat_id=admin_id, text='Номер уже занят на выбранные даты')
             except Exception:
                 logger.exception('Failed to notify admin about conflict')
             return
@@ -206,23 +240,25 @@ async def handle_assign_room_event(message):
         user = user_q.scalar_one_or_none()
         if user:
             try:
-                await bot.send_message(chat_id=user.telegram_id, text=f'Ваша бронь подтверждена. Номер: {room.full_room_number}')
-                if reservation.check_in_date != date.today():
-                    res_text_user = (
-                        f"Бронь ID: {reservation.id}\n"
-                        f"Клиент: {user.phone_number if getattr(user, 'phone_number', None) else ''}\n"
-                        f"Количество человек: {reservation.people_quantity}\n"
-                        f"Класс номера: {reservation.room_class.value if reservation.room_class else ''}\n"
-                        f"Дата заезда: {reservation.check_in_date}\n"
-                        f"Дата выезда: {reservation.eviction_date}\n"
-                        f"Номер: {room.full_room_number}\n"
-                    )
-                    await bot.send_message(chat_id=user.telegram_id, text=res_text_user)
+                if not message['is_test_data']:
+                    await bot.send_message(chat_id=user.telegram_id, text=f'Ваша бронь подтверждена. Номер: {room.full_room_number}')
+                    if reservation.check_in_date != date.today():
+                        res_text_user = (
+                            f"Бронь ID: {reservation.id}\n"
+                            f"Клиент: {user.phone_number if getattr(user, 'phone_number', None) else ''}\n"
+                            f"Количество человек: {reservation.people_quantity}\n"
+                            f"Класс номера: {reservation.room_class.value if reservation.room_class else ''}\n"
+                            f"Дата заезда: {reservation.check_in_date}\n"
+                            f"Дата выезда: {reservation.eviction_date}\n"
+                            f"Номер: {room.full_room_number}\n"
+                        )
+                        await bot.send_message(chat_id=user.telegram_id, text=res_text_user)
             except Exception:
                 logger.exception('Failed to notify resident')
 
     try:
-        await bot.send_message(chat_id=admin_id, text='Номер привязан, бронь подтверждена')
+        if not message['is_test_data']:
+            await bot.send_message(chat_id=admin_id, text='Номер привязан, бронь подтверждена')
     except Exception:
         logger.exception('Failed to notify admin after assign')
     finally:

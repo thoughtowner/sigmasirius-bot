@@ -30,6 +30,8 @@ from ..logger import LOGGING_CONFIG, logger, correlation_id_ctx
 from ..storage.rabbit import channel_pool
 import uuid
 
+import qrcode
+
 
 default = DefaultBotProperties(parse_mode=ParseMode.HTML)
 bot = Bot(token=settings.BOT_TOKEN, default=default)
@@ -51,9 +53,18 @@ async def handle_reservation_event(message): # TODO async def handle_reservation
 
         await db.commit()
 
-        await bot.send_message(
-            text='Бронирование успешно создано!',
-            chat_id=message['telegram_id']
-        )
+        if not message['is_test_data']:
+            buf = io.BytesIO()
+            img = qrcode.make('reservation/' + message['reservation_id'])
+            img.save(buf, format='PNG')
+            buf.seek(0)
+            image_file = BufferedInputFile(file=buf.read(), filename='reservation_qr.png')
+            
+            # import bot lazily to avoid circular import at module import time
+            from src.bot import bot
+            await bot.send_photo(
+                chat_id=message['telegram_id'], photo=image_file,
+                caption='Ваш QR-код для заселения. Покажите его на ресепшене.',
+            )
 
     await handle_start_event(message=message)

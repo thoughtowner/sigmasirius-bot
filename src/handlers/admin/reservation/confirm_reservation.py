@@ -151,3 +151,4 @@ async def handle_assign_room_cb(query):
         )
 
     await query.answer('Запрос на привязку номера отправлен серверу')
+    

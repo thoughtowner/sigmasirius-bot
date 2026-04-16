@@ -11,6 +11,9 @@ from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from ..logger import LOGGING_CONFIG, logger
 
+from consumers.start_consumer.handlers.start import handle_start_event
+
+
 default = DefaultBotProperties(parse_mode=ParseMode.HTML)
 bot = Bot(token=settings.BOT_TOKEN, default=default)
 
@@ -92,7 +95,8 @@ async def handle_cancel_reservations_event(message):
         if not user:
             resp = {'msg': 'Пользователь не найден'}
         else:
-            del_q = await db.execute(select(Reservation).filter(Reservation.user_id == user.id, Reservation.status.in_([ReservationStatus.UNCONFIRM, ReservationStatus.IN_PROGRESS])))
+            # Only remove reservations with UNCONFIRM status. Do not delete IN_PROGRESS reservations.
+            del_q = await db.execute(select(Reservation).filter(Reservation.user_id == user.id, Reservation.status == ReservationStatus.UNCONFIRM))
             reservations = del_q.scalars().all()
             if not reservations:
                 resp = {'msg': 'Нет броней для удаления'}
@@ -111,3 +115,5 @@ async def handle_cancel_reservations_event(message):
             aio_pika.Message(msgpack.packb(resp)),
             user_queue_name,
         )
+    
+    await handle_start_event(message=message)
