@@ -55,7 +55,8 @@ async def take_application_form_for_processing(callback_query: CallbackQuery, st
                         'action': 'take_application_form_for_processing',
                         'working_repairman_telegram_id': telegram_id,
                         'working_repairman_message_id': message_id,
-                        'new_status': 'in_processing'
+                        'new_status': 'in_processing',
+                        'is_test_data': False
                     }
                 ),
                 # correlation_id=correlation_id_ctx.get()

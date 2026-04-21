@@ -9,7 +9,7 @@ from src.storage.db import async_session
 import asyncio
 import logging
 
-PHONE_NUMBER: str = '+7 (999) 999-99-99'
+PHONE_NUMBER: str = '+7 (999) 999-99-98'
 
 
 async def add_user_admin_role(db: AsyncSession):

@@ -90,7 +90,8 @@ async def upload_photo(message: Message, state: FSMContext):
         title=data['title'],
         description=data['description'],
         photo_title=data['photo_title'],
-        status='not_completed'
+        status='not_completed',
+        is_test_data=False
     )
 
     async with channel_pool.acquire() as channel:  # type: aio_pika.Channel

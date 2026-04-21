@@ -39,8 +39,13 @@ class Settings(BaseSettings):
 
     APPLICATION_FORM_EXCHANGE_NAME: str = 'application_form_exchange'
     APPLICATION_FORM_QUEUE_NAME: str = 'application_form_queue'
+
     STATS_EXCHANGE_NAME: str = 'stats_exchange'
     STATS_QUEUE_NAME: str = 'stats_queue'
+
+    REPAIRMAN_EXCHANGE_NAME: str = 'repairman_exchange'
+    REPAIRMAN_QUEUE_NAME: str = 'repairman_queue'
+    USER_REPAIRMAN_QUEUE_TEMPLATE: str = 'user_repairman_queue.{telegram_id}'
 
 
     @property

@@ -1,1 +1,2 @@
 from .application_form import cancel_application_form, complete_application_form, take_application_form_for_processing
+from .repairman import quit_as_repairman

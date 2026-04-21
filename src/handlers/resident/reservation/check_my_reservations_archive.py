@@ -26,6 +26,7 @@ async def check_my_reservations_archive(message: Message, state: FSMContext):
             aio_pika.Message(msgpack.packb({
                 'event': 'list_my_reservations_archive',
                 'telegram_id': telegram_id,
+                'is_test_data': False,
             })),
             settings.RESERVATION_QUEUE_NAME
         )

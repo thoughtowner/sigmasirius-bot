@@ -37,6 +37,7 @@ async def hire_repairman(message: Message, state: FSMContext):
                 'event': 'assign_repairman',
                 'phone_number': phone_number,
                 'telegram_id': admin_id,
+                'is_test_data': False,
             })),
             settings.START_QUEUE_NAME
         )
@@ -86,6 +87,7 @@ async def handle_remove_phone(message: Message, state: FSMContext):
                 'event': 'remove_repairman',
                 'phone_number': phone,
                 'telegram_id': admin_id,
+                'is_test_data': False,
             })),
             settings.START_QUEUE_NAME
         )

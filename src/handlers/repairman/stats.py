@@ -20,6 +20,7 @@ async def repairman_stats(message: Message):
             aio_pika.Message(msgpack.packb({
                 'event': 'repairman_stats',
                 'telegram_id': telegram_id,
+                'is_test_data': False,
             })),
             settings.STATS_QUEUE_NAME
         )

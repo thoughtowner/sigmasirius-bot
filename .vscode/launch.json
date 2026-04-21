@@ -42,6 +42,19 @@
     },
 
     {
+      "name": "repairman_consumer",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "consumers.repairman_consumer",
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "PYTHONUNBUFFERED": "1",
+        "PYTHONPATH": "${workspaceFolder}"
+      },
+      "console": "integratedTerminal"
+    },
+
+    {
       "name": "application_form_consumer",
       "type": "debugpy",
       "request": "launch",
@@ -54,24 +67,24 @@
       "console": "integratedTerminal"
     },
 
-    {
-      "name": "uvicorn",
-      "type": "debugpy",
-      "request": "launch",
-      "module": "uvicorn",
-      "args": [
-        "src.app:create_app",
-        "--factory",
-        "--port",
-        "8001"
-      ],
-      "cwd": "${workspaceFolder}",
-      "env": {
-        "PYTHONUNBUFFERED": "1",
-        "PYTHONPATH": "${workspaceFolder}"
-      },
-      "console": "integratedTerminal"
-    },
+    // {
+    //   "name": "uvicorn",
+    //   "type": "debugpy",
+    //   "request": "launch",
+    //   "module": "uvicorn",
+    //   "args": [
+    //     "src.app:create_app",
+    //     "--factory",
+    //     "--port",
+    //     "8001"
+    //   ],
+    //   "cwd": "${workspaceFolder}",
+    //   "env": {
+    //     "PYTHONUNBUFFERED": "1",
+    //     "PYTHONPATH": "${workspaceFolder}"
+    //   },
+    //   "console": "integratedTerminal"
+    // },
 
     {
       "name": "add_rooms",

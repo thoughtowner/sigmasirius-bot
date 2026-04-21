@@ -27,6 +27,7 @@ async def delete_reservation(message: Message, state: FSMContext):
             aio_pika.Message(msgpack.packb({
                 'event': 'list_my_reservations',
                 'telegram_id': telegram_id,
+                'is_test_data': False,
             })),
             settings.RESERVATION_QUEUE_NAME
         )
@@ -80,6 +81,7 @@ async def handle_delete_reservation_confirm(query: CallbackQuery):
             aio_pika.Message(msgpack.packb({
                 'event': 'cancel_reservations',
                 'telegram_id': telegram_id,
+                'is_test_data': False,
             })),
             settings.RESERVATION_QUEUE_NAME
         )

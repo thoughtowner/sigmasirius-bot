@@ -55,8 +55,8 @@ async def start_reservation(message: Message, state: FSMContext):
     data = await state.get_data()
     check_reservation_message = CheckReservationMessage(
         event='check_reservation',
-        is_test_data=False,
         telegram_id=data['telegram_id'],
+        is_test_data=False,
     )
 
     async with channel_pool.acquire() as channel:  # type: aio_pika.Channel
@@ -234,13 +234,13 @@ async def handle_reserve_date(query: CallbackQuery, state: FSMContext):
     reservation_id = uuid.uuid4()
     reservation_message = ReservationMessage(
         event='reservation',
-        is_test_data=False,
         reservation_id=str(reservation_id),
         telegram_id=data['telegram_id'],
         people_quantity=people_quantity,
         room_class=room_class,
         check_in_date=check_in.isoformat(),
-        eviction_date=eviction.isoformat()
+        eviction_date=eviction.isoformat(),
+        is_test_data=False
     )
 
     async with channel_pool.acquire() as channel:  # type: aio_pika.Channel
@@ -263,9 +263,9 @@ async def handle_reserve_date(query: CallbackQuery, state: FSMContext):
     await state.update_data(data)
 
 
-@router.callback_query(F.data == 'noop')
-async def handle_noop(query: CallbackQuery):
-    await query.answer('Доступно лишь для просмотра', show_alert=False)
+# @router.callback_query(F.data == 'noop')
+# async def handle_noop(query: CallbackQuery):
+#     await query.answer('Доступно лишь для просмотра', show_alert=False)
 
 
 
@@ -400,7 +400,6 @@ async def _build_week_keyboard(week_offset: int, people_quantity: int, room_clas
 
 #     reservation_message = ReservationMessage(
 #         event='reservation',
-#         is_test_data=False,
 #         reservation_id=str(reservation_id),
 #         telegram_id=data['telegram_id'],
 #         people_quantity=data['people_quantity'],

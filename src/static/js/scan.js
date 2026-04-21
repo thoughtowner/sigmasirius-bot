@@ -90,28 +90,47 @@ function copyResult() {
 
 async function sendToTelegram() {
     if (scanResult) {
-        const userId = tg.initDataUnsafe.user.id;
+        const userId = tg && tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.id;
+
+        if (!userId) {
+            showPopup('Не удалось определить пользователя Telegram');
+            return;
+        }
+
+        let endpoint = null;
+        if (scanResult.startsWith('reservation/')) {
+            endpoint = '/tg/confirm-reservation/';
+        } else if (scanResult.startsWith('repairman/')) {
+            endpoint = '/tg/assign-repairman/';
+        } else if (scanResult.startsWith('quit_as_repairman/')) {
+            endpoint = '/tg/fire-repairman/';
+        } else {
+            showPopup('Неизвестный тип QR-кода');
+            return;
+        }
 
         try {
-                const response = await fetch('/tg/confirm-reservation/', {
+            const response = await fetch(endpoint, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                        user_id: userId,
-                        result_scan: scanResult
+                    user_id: userId,
+                    result_scan: scanResult
                 }),
             });
 
             if (!response.ok) {
-                throw new Error('Ошибка при отправке данных');
+                const text = await response.text();
+                throw new Error('Ошибка при отправке данных: ' + text);
             }
 
             const result = await response.json();
-            // close MiniApp after successful send
+            showPopup('Успешно отправлено');
         } catch (error) {
             console.error('Ошибка:', error);
+            showPopup('Ошибка при отправке данных');
         } finally {
             try {
                 if (tg && typeof tg.close === 'function') tg.close();
@@ -131,6 +150,58 @@ function showPopup(message) {
 }
 
 // Инициализация: скрываем область результатов при загрузке страницы
+// Инициализация: скрываем область результатов при загрузке страницы
 document.addEventListener('DOMContentLoaded', function () {
     document.getElementById('resultArea').style.display = 'none';
+    const toggleBtn = document.getElementById('toggleScanBtn');
+    const confirmBtn = document.getElementById('confirmBtn');
+
+    // Disable scanner by default until server confirms permissions
+    if (toggleBtn) toggleBtn.disabled = true;
+    if (confirmBtn) confirmBtn.disabled = true;
+
+    // Verify user permissions (must have run /start and be admin)
+    (async function checkPermissions() {
+        try {
+            const userId = tg && tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.id;
+            if (!userId) {
+                showPopup('Не удалось определить пользователя Telegram');
+                return;
+            }
+
+            const resp = await fetch('/tg/check-scanner-permissions/', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({user_id: userId})
+            });
+
+            if (!resp.ok) {
+                showPopup('Ошибка проверки прав доступа');
+                return;
+            }
+
+            const body = await resp.json();
+            if (body.allowed) {
+                if (toggleBtn) toggleBtn.disabled = false;
+                if (confirmBtn) confirmBtn.disabled = false;
+            } else {
+                showPopup(body.message || 'Нет прав для использования сканера');
+                if (toggleBtn) toggleBtn.disabled = true;
+                if (confirmBtn) confirmBtn.disabled = true;
+            }
+        } catch (err) {
+            console.error('Permission check failed', err);
+            showPopup('Ошибка проверки прав доступа');
+        } finally {
+            try {
+                if (tg && typeof tg.close === 'function') tg.close();
+            } catch (e) {
+                console.warn('tg.close() failed', e);
+            }
+        }
+    })();
+
+    if (toggleBtn) toggleBtn.addEventListener('click', toggleScanning);
+    const confirm = document.getElementById('confirmBtn');
+    if (confirm) confirm.addEventListener('click', sendToTelegram);
 });

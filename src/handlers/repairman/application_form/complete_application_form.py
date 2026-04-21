@@ -51,7 +51,8 @@ async def complete_application_form(callback_query: CallbackQuery, state: FSMCon
                         'action': 'complete_application_form',
                         'working_repairman_telegram_id': telegram_id,
                         'working_repairman_message_id': message_id,
-                        'new_status': 'completed'
+                        'new_status': 'completed',
+                        'is_test_data': False
                     }
                 ),
                 # correlation_id=correlation_id_ctx.get()

@@ -25,7 +25,21 @@ class AdminMiddleware(BaseMiddleware):
             user_result = await db.execute(select(User).filter(User.telegram_id == current_telegram_id))
             user = user_result.scalar()
 
-            if not user or not user.is_admin:
+            if not user:
+                # user not registered -> ask to run /start
+                try:
+                    from src.bot import bot
+                    await bot.send_message(current_telegram_id, 'Перед выполнением команды выполните /start')
+                except Exception:
+                    pass
+                raise SkipHandler('Unauthorized')
+
+            if not user.is_admin:
+                try:
+                    from src.bot import bot
+                    await bot.send_message(current_telegram_id, 'У вас нет прав для выполнения этой команды.')
+                except Exception:
+                    pass
                 raise SkipHandler('Unauthorized')
 
         return await handler(event, data)

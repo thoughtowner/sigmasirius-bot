@@ -39,7 +39,8 @@ async def cancel_application_form(callback_query: CallbackQuery, state: FSMConte
                         'action': 'cancel_application_form',
                         'working_repairman_telegram_id': telegram_id,
                         'working_repairman_message_id': message_id,
-                        'new_status': 'cancelled'
+                        'new_status': 'cancelled',
+                        'is_test_data': False
                     }
                 ),
                 # correlation_id=correlation_id_ctx.get()

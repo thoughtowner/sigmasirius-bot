@@ -27,6 +27,8 @@ import msgpack
 
 from ..logger import LOGGING_CONFIG, logger, correlation_id_ctx
 from ..storage.rabbit import channel_pool
+from src.storage.redis import redis_storage
+import json
 
 
 default = DefaultBotProperties(parse_mode=ParseMode.HTML)
@@ -101,13 +103,21 @@ async def handle_add_application_form_event(message): # TODO async def handle_ap
                 chat_id=repairman_telegram_id
             )
 
-            await db.execute(insert(TelegramIdAndMessageId).values(
-                telegram_id=repairman_telegram_id,
-                message_id=application_form_for_repairman_message.message_id,
-                application_form_id=application_form_id
-            ))
-
-            await db.flush()
+            # store mapping in redis: add to application_form:{id}:members and reverse map
+            member = {'telegram_id': repairman_telegram_id, 'message_id': application_form_for_repairman_message.message_id}
+            key = f'application_form:{str(application_form_id)}:members'
+            current_raw = await redis_storage.get(key)
+            if current_raw:
+                try:
+                    current = json.loads(current_raw)
+                except Exception:
+                    current = []
+            else:
+                current = []
+            current.append(member)
+            await redis_storage.set(key, json.dumps(current))
+            # reverse lookup
+            await redis_storage.set(f'message_map:{repairman_telegram_id}:{application_form_for_repairman_message.message_id}', str(application_form_id))
 
         application_form_for_resident_message = await bot.send_photo(
             photo=photo_input_file,
@@ -117,11 +127,19 @@ async def handle_add_application_form_event(message): # TODO async def handle_ap
             ),
             chat_id=message['telegram_id']
         )
-
-        await db.execute(insert(TelegramIdAndMessageId).values(
-            telegram_id=message['telegram_id'],
-            message_id=application_form_for_resident_message.message_id,
-            application_form_id=application_form_id
-        ))
+        # store resident mapping in redis as well
+        resident_member = {'telegram_id': message['telegram_id'], 'message_id': application_form_for_resident_message.message_id}
+        key = f'application_form:{str(application_form_id)}:members'
+        current_raw = await redis_storage.get(key)
+        if current_raw:
+            try:
+                current = json.loads(current_raw)
+            except Exception:
+                current = []
+        else:
+            current = []
+        current.append(resident_member)
+        await redis_storage.set(key, json.dumps(current))
+        await redis_storage.set(f'message_map:{message["telegram_id"]}:{application_form_for_resident_message.message_id}', str(application_form_id))
 
         await db.commit()

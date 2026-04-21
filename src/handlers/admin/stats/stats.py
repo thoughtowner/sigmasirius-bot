@@ -20,6 +20,7 @@ async def admin_stats(message: Message):
             aio_pika.Message(msgpack.packb({
                 'event': 'admin_stats',
                 'telegram_id': admin_id,
+                'is_test_data': False,
             })),
             settings.STATS_QUEUE_NAME
         )
