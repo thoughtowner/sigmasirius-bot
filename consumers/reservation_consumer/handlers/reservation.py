@@ -58,8 +58,14 @@ async def handle_reservation_event(message): # TODO async def handle_reservation
             img = qrcode.make('reservation/' + message['reservation_id'])
             img.save(buf, format='PNG')
             buf.seek(0)
+
+            # store generated QR in object storage (MinIO)
+            try:
+                images_storage.upload_file(f"reservation/{message['reservation_id']}.png", io.BytesIO(buf.getvalue()))
+            except Exception:
+                logger.exception('Failed to upload reservation QR to storage')
+
             image_file = BufferedInputFile(file=buf.read(), filename='reservation_qr.png')
-            
             # import bot lazily to avoid circular import at module import time
             from src.bot import bot
             await bot.send_photo(

@@ -188,16 +188,22 @@ document.addEventListener('DOMContentLoaded', function () {
                 showPopup(body.message || 'Нет прав для использования сканера');
                 if (toggleBtn) toggleBtn.disabled = true;
                 if (confirmBtn) confirmBtn.disabled = true;
+                try {
+                    if (tg && typeof tg.close === 'function') tg.close();
+                } catch (e) {
+                    console.warn('tg.close() failed', e);
+                }
+                return;
             }
         } catch (err) {
             console.error('Permission check failed', err);
             showPopup('Ошибка проверки прав доступа');
-        } finally {
             try {
                 if (tg && typeof tg.close === 'function') tg.close();
             } catch (e) {
                 console.warn('tg.close() failed', e);
             }
+            return;
         }
     })();
 

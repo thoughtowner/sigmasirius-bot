@@ -45,7 +45,6 @@ class Settings(BaseSettings):
 
     REPAIRMAN_EXCHANGE_NAME: str = 'repairman_exchange'
     REPAIRMAN_QUEUE_NAME: str = 'repairman_queue'
-    USER_REPAIRMAN_QUEUE_TEMPLATE: str = 'user_repairman_queue.{telegram_id}'
 
 
     @property

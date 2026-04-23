@@ -28,10 +28,6 @@ import asyncio
 from consumers.start_consumer.handlers.start import handle_start_event
 from consumers.start_consumer.handlers.check_start import handle_check_start_event
 from consumers.start_consumer.handlers.check_phone_number import handle_check_phone_number_event
-from consumers.start_consumer.handlers.assign_repairman import (
-    handle_assign_repairman_event,
-    handle_remove_repairman_event,
-)
 
 from .metrics import TOTAL_RECEIVED_MESSAGES
 
@@ -67,10 +63,6 @@ async def start_consumer() -> None:
                                 await handle_check_start_event(body)
                             elif body['event'] == 'check_phone_number':
                                 await handle_check_phone_number_event(body)
-                            elif body['event'] == 'assign_repairman':
-                                await handle_assign_repairman_event(body)
-                            elif body['event'] == 'remove_repairman':
-                                await handle_remove_repairman_event(body)
                     except asyncio.CancelledError:
                         # shutdown in progress
                         raise

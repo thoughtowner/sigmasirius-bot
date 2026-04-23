@@ -133,7 +133,8 @@
       "cwd": "${workspaceFolder}",
       "env": {
         "PYTHONUNBUFFERED": "1",
-        "PYTHONPATH": "${workspaceFolder}"
+        "PYTHONPATH": "${workspaceFolder}",
+        "APPLY_TEST_TRIGGERS": "1"
       },
       "console": "integratedTerminal"
     }

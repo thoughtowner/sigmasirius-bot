@@ -6,7 +6,7 @@ from ..storage.db import async_session
 from aio_pika import ExchangeType
 from sqlalchemy.exc import IntegrityError
 
-from ..model.models import User, ApplicationForm, ApplicationFormStatus, TelegramIdAndMessageId
+from ..model.models import User, ApplicationForm, ApplicationFormStatus
 from sqlalchemy import insert, select
 
 from ..schema.application_form_for_repairman import ApplicationFormForRepairmanMessage

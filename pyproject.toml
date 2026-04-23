@@ -33,6 +33,7 @@ prometheus-client = "^0.21.1"
 qrcode = "^8.2"
 pillow = "^12.2.0"
 faker = "^40.13.0"
+psycopg2 = "^2.9.12"
 
 [tool.poetry.group.dev.dependencies]
 autoflake = "1.4"

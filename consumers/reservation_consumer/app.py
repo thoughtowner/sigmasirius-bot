@@ -21,14 +21,12 @@ from .metrics import TOTAL_RECEIVED_MESSAGES
 from .handlers.check_reservation import handle_check_reservation_event
 from .handlers.reservation import handle_reservation_event
 from .handlers.check_unconfirmed_reservation import handle_check_unconfirmed_reservation_event
+from .handlers.resend_qr import handle_resend_reservation_qr_event
+from .handlers.pick_and_assign import handle_pick_room_event, handle_assign_room_event
 from .handlers.manage_list_cancel import (
     handle_list_my_reservations_event,
     handle_list_my_reservations_archive_event,
     handle_cancel_reservations_event,
-)
-from .handlers.pick_and_assign import (
-    handle_pick_room_event,
-    handle_assign_room_event,
 )
 
 
@@ -58,13 +56,16 @@ async def reservation_consumer() -> None:
                         await handle_reservation_event(body)
                     elif body['event'] == 'check_unconfirmed_reservation':
                         await handle_check_unconfirmed_reservation_event(body)
-                    elif body['event'] == 'pick_room':
-                        await handle_pick_room_event(body)
-                    elif body['event'] == 'assign_room':
-                        await handle_assign_room_event(body)
                     elif body['event'] == 'list_my_reservations':
                         await handle_list_my_reservations_event(body)
                     elif body['event'] == 'list_my_reservations_archive':
                         await handle_list_my_reservations_archive_event(body)
                     elif body['event'] == 'cancel_reservations':
                         await handle_cancel_reservations_event(body)
+                    elif body['event'] == 'resend_qr':
+                        await handle_resend_reservation_qr_event(body)
+
+                    elif body['event'] == 'pick_room':
+                        await handle_pick_room_event(body)
+                    elif body['event'] == 'assign_room':
+                        await handle_assign_room_event(body)

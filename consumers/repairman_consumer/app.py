@@ -27,11 +27,6 @@ import asyncio
 
 from consumers.repairman_consumer.handlers.become_repairman import handle_become_repairman_event
 from consumers.repairman_consumer.handlers.quit_as_repairman import handle_quit_as_repairman_event
-from consumers.repairman_consumer.handlers.fire_repairman import handle_fire_repairman_event
-from consumers.repairman_consumer.handlers.assign_repairman import (
-    handle_assign_repairman_event,
-    handle_remove_repairman_event,
-)
 
 from .metrics import TOTAL_RECEIVED_MESSAGES
 
@@ -65,12 +60,6 @@ async def repairman_consumer() -> None:
                                 await handle_become_repairman_event(body)
                             elif body['event'] == 'quit_as_repairman':
                                 await handle_quit_as_repairman_event(body)
-                            elif body['event'] == 'fire_repairman':
-                                await handle_fire_repairman_event(body)
-                            elif body['event'] == 'assign_repairman':
-                                await handle_assign_repairman_event(body)
-                            # elif body['event'] == 'remove_repairman':
-                            #     await handle_remove_repairman_event(body)
                     except asyncio.CancelledError:
                         # shutdown in progress
                         raise

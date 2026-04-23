@@ -6,7 +6,7 @@ from ..storage.db import async_session
 from aio_pika import ExchangeType
 from sqlalchemy.exc import IntegrityError
 
-from ..model.models import User, ApplicationForm, TelegramIdAndMessageId, ApplicationFormStatus
+from ..model.models import User, ApplicationForm, ApplicationFormStatus
 from sqlalchemy import insert, select, update, and_
 
 from ..schema.application_form_for_repairman import ApplicationFormForRepairmanMessage
@@ -43,14 +43,8 @@ async def handle_change_application_form_status_event(message): # TODO async def
                 application_form_id = None
 
             if not application_form_id:
-                # fallback to DB (legacy)
-                application_form_id_result = await db.execute(
-                    select(TelegramIdAndMessageId.application_form_id).filter(and_(
-                        TelegramIdAndMessageId.telegram_id == message['working_repairman_telegram_id'],
-                        TelegramIdAndMessageId.message_id == message['working_repairman_message_id']
-                    ))
-                )
-                application_form_id = application_form_id_result.scalar()
+                logger.warning('No redis mapping for message_map:%s:%s', message['working_repairman_telegram_id'], message['working_repairman_message_id'])
+                return
 
             await db.execute(
                 update(ApplicationForm).
@@ -176,13 +170,8 @@ async def handle_change_application_form_status_event(message): # TODO async def
                 application_form_id = None
 
             if not application_form_id:
-                application_form_id_result = await db.execute(
-                    select(TelegramIdAndMessageId.application_form_id).filter(and_(
-                        TelegramIdAndMessageId.telegram_id == message['working_repairman_telegram_id'],
-                        TelegramIdAndMessageId.message_id == message['working_repairman_message_id']
-                    ))
-                )
-                application_form_id = application_form_id_result.scalar()
+                logger.warning('No redis mapping for message_map:%s:%s', message['working_repairman_telegram_id'], message['working_repairman_message_id'])
+                return
 
             await db.execute(
                 update(ApplicationForm).
@@ -281,36 +270,41 @@ async def handle_change_application_form_status_event(message): # TODO async def
                 status=parse_status(application_form_for_resident[2].value)
             )
 
-            resident_telegram_id_and_message_id_query = await db.execute(
-                select(
-                    TelegramIdAndMessageId.telegram_id,
-                    TelegramIdAndMessageId.message_id
-                )
-                .join(User, User.telegram_id == TelegramIdAndMessageId.telegram_id)
-                .join(ApplicationForm, ApplicationForm.id == TelegramIdAndMessageId.application_form_id)
-                .where(
-                    (ApplicationForm.id == application_form_id)
-                    & (User.id == ApplicationForm.user_id)
-                    & (TelegramIdAndMessageId.message_id != message['working_repairman_message_id'])
-                )
-            )
-            resident_telegram_id_and_message_id = resident_telegram_id_and_message_id_query.fetchone()
+            # load members list from redis and find resident mapping by owner
+            members = []
+            try:
+                raw = await redis_storage.get(f"application_form:{str(application_form_id)}:members")
+                if raw:
+                    members = json.loads(raw.decode() if isinstance(raw, bytes) else raw)
+            except Exception:
+                members = []
 
-            parsed_resident_telegram_id_and_message_id = {
-                'telegram_id': resident_telegram_id_and_message_id[0],
-                'message_id': resident_telegram_id_and_message_id[1]
-            }
+            parsed_resident_telegram_id_and_message_id = None
+            try:
+                app_owner_q = await db.execute(select(ApplicationForm.user_id).filter(ApplicationForm.id == application_form_id))
+                owner_id = app_owner_q.scalar()
+                if owner_id:
+                    user_q = await db.execute(select(User.telegram_id).filter(User.id == owner_id))
+                    owner_telegram = user_q.scalar()
+                    if owner_telegram:
+                        for m in members:
+                            if int(m.get('telegram_id')) == int(owner_telegram) and int(m.get('message_id')) != int(message['working_repairman_message_id']):
+                                parsed_resident_telegram_id_and_message_id = {'telegram_id': m.get('telegram_id'), 'message_id': m.get('message_id')}
+                                break
+            except Exception:
+                parsed_resident_telegram_id_and_message_id = None
 
             await bot.delete_message(
                 chat_id=message['working_repairman_telegram_id'],
                 message_id=message['working_repairman_message_id']
             )
 
-            await bot.edit_message_caption(
-                caption=render(
-                    'application_form/application_form_for_resident.jinja2',
-                    body=parsed_application_form_for_resident
-                ),
-                chat_id=parsed_resident_telegram_id_and_message_id['telegram_id'],
-                message_id=parsed_resident_telegram_id_and_message_id['message_id']
-            )
+            if parsed_resident_telegram_id_and_message_id:
+                await bot.edit_message_caption(
+                    caption=render(
+                        'application_form/application_form_for_resident.jinja2',
+                        body=parsed_application_form_for_resident
+                    ),
+                    chat_id=parsed_resident_telegram_id_and_message_id['telegram_id'],
+                    message_id=parsed_resident_telegram_id_and_message_id['message_id']
+                )

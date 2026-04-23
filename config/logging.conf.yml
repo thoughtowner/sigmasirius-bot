@@ -9,8 +9,6 @@ formatters:
     (): consumers.reservation_consumer.logger.ConsoleFormatter
   console_formatter_application_form_consumer:
     (): consumers.application_form_consumer.logger.ConsoleFormatter
-  console_formatter_repairman_consumer:
-    (): consumers.repairman_consumer.logger.ConsoleFormatter
 handlers:
   console_handler_backend:
     class: logging.StreamHandler
@@ -24,9 +22,6 @@ handlers:
   console_handler_application_form_consumer:
     class: logging.StreamHandler
     formatter: console_formatter_application_form_consumer
-  console_handler_repairman_consumer:
-    class: logging.StreamHandler
-    formatter: console_formatter_repairman_consumer
 root:
   level: INFO
   handlers: [console_handler_backend]
@@ -47,10 +42,6 @@ loggers:
     level: INFO
     propagate: no
     handlers: [ console_handler_application_form_consumer ]
-  'repairman_consumer_logger':
-    level: INFO
-    propagate: no
-    handlers: [ console_handler_repairman_consumer ]
   'uvicorn':
     level: INFO
     propagate: no

@@ -1,5 +1,5 @@
-from ..storage.db import async_session
-from ..model.models import User
+from ...repairman_consumer.storage.db import async_session
+from ...repairman_consumer.model.models import User
 from sqlalchemy import select, update
 from aiogram import Bot
 from aiogram.client.default import DefaultBotProperties
@@ -8,8 +8,8 @@ from config.settings import settings
 import aio_pika
 import msgpack
 from aio_pika import ExchangeType
-from ..logger import LOGGING_CONFIG, logger
-from ..storage.rabbit import channel_pool
+from ...repairman_consumer.logger import LOGGING_CONFIG, logger
+from ...repairman_consumer.storage.rabbit import channel_pool
 from aio_pika.exceptions import QueueEmpty
 import asyncio
 

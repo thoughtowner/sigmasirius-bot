@@ -164,23 +164,23 @@ ROOM_NUMBERS = {
 }
 
 
-TEST_ROOM_NUMBERS = {
-    "1": {
-        "1": {
-            "1": [
-                {"room": 101, "people_quantity": 1, "room_class": "economy"},
-                {"room": 102, "people_quantity": 4, "room_class": "economy"},
-                {"room": 103, "people_quantity": 4, "room_class": "economy"},
-                {"room": 104, "people_quantity": 1, "room_class": "economy"},
-            ],
-        }
-    }
-}
+# TEST_ROOM_NUMBERS = {
+#     "1": {
+#         "1": {
+#             "1": [
+#                 {"room": 101, "people_quantity": 1, "room_class": "economy"},
+#                 {"room": 102, "people_quantity": 4, "room_class": "economy"},
+#                 {"room": 103, "people_quantity": 4, "room_class": "economy"},
+#                 {"room": 104, "people_quantity": 1, "room_class": "economy"},
+#             ],
+#         }
+#     }
+# }
 
 
 async def seed_rooms():
     async with async_session() as db:
-        for building, entrances in TEST_ROOM_NUMBERS.items():
+        for building, entrances in ROOM_NUMBERS.items():
             for entrance, floors in entrances.items():
                 for floor, rooms_list in floors.items():
                     for room_info in rooms_list:
