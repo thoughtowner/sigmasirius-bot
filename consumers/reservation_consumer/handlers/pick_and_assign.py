@@ -16,7 +16,7 @@ import json
 from uuid import uuid4
 from datetime import date
 
-from consumers.start_consumer.handlers.start import handle_start_event
+# import handle_start_event lazily where needed to avoid circular imports
 
 default = DefaultBotProperties(parse_mode=ParseMode.HTML)
 bot = Bot(token=settings.BOT_TOKEN, default=default)
@@ -241,18 +241,24 @@ async def handle_assign_room_event(message):
         if user:
             try:
                 if not message['is_test_data']:
-                    await bot.send_message(chat_id=user.telegram_id, text=f'Ваша бронь подтверждена. Номер: {room.full_room_number}')
-                    if reservation.check_in_date != date.today():
-                        res_text_user = (
-                            f"Бронь ID: {reservation.id}\n"
-                            f"Клиент: {user.phone_number if getattr(user, 'phone_number', None) else ''}\n"
-                            f"Количество человек: {reservation.people_quantity}\n"
-                            f"Класс номера: {reservation.room_class.value if reservation.room_class else ''}\n"
-                            f"Дата заезда: {reservation.check_in_date}\n"
-                            f"Дата выезда: {reservation.eviction_date}\n"
-                            f"Номер: {room.full_room_number}\n"
-                        )
-                        await bot.send_message(chat_id=user.telegram_id, text=res_text_user)
+                            await bot.send_message(chat_id=user.telegram_id, text=f'Ваша бронь подтверждена. Номер: {room.full_room_number}')
+                            if reservation.check_in_date != date.today():
+                                res_text_user = (
+                                    f"Бронь ID: {reservation.id}\n"
+                                    f"Клиент: {user.phone_number if getattr(user, 'phone_number', None) else ''}\n"
+                                    f"Количество человек: {reservation.people_quantity}\n"
+                                    f"Класс номера: {reservation.room_class.value if reservation.room_class else ''}\n"
+                                    f"Дата заезда: {reservation.check_in_date}\n"
+                                    f"Дата выезда: {reservation.eviction_date}\n"
+                                    f"Номер: {room.full_room_number}\n"
+                                )
+                                await bot.send_message(chat_id=user.telegram_id, text=res_text_user)
+                            # send start keyboard to resident after confirmation
+                            try:
+                                from consumers.start_consumer.handlers.start import send_reply_start_keyboard
+                                await send_reply_start_keyboard(user.telegram_id, clear_reservation_markups=False)
+                            except Exception:
+                                pass
             except Exception:
                 logger.exception('Failed to notify resident')
 
@@ -262,4 +268,8 @@ async def handle_assign_room_event(message):
     except Exception:
         logger.exception('Failed to notify admin after assign')
     finally:
-        await handle_start_event(message=message)
+        try:
+            from consumers.start_consumer.handlers.start import send_reply_start_keyboard
+            await send_reply_start_keyboard(message.get('telegram_id'), clear_reservation_markups=False)
+        except Exception:
+            pass

@@ -1,5 +1,5 @@
 from aiogram.fsm.context import FSMContext
-from aiogram.types import Message
+from aiogram.types import Message, CallbackQuery
 from aiogram import F
 
 import aio_pika
@@ -45,7 +45,7 @@ async def start_become_repairman(message: Message, state: FSMContext):
         is_test_data=False
     )
 
-    async with channel_pool.acquire() as channel:  # type: aio_pika.Channel
+    async with channel_pool.acquire() as channel:
         logger.info('Send data to repairman queue for check repairman status...')
         repairman_exchange = await channel.declare_exchange(settings.REPAIRMAN_EXCHANGE_NAME, ExchangeType.DIRECT, durable=True)
         repairman_queue = await channel.declare_queue(settings.REPAIRMAN_QUEUE_NAME, durable=True)
@@ -61,6 +61,46 @@ async def start_become_repairman(message: Message, state: FSMContext):
     
     await message.answer(msg.INFO)
     
+    data = await state.get_data()
+    await state.clear()
+    await state.update_data(data)
+
+
+@router.callback_query(F.data == 'start_cmd:become_repairman')
+async def start_become_repairman_via_button(query: CallbackQuery, state: FSMContext):
+    await query.answer()
+    try:
+        await query.message.delete()
+    except Exception:
+        pass
+
+    await state.update_data(telegram_id=query.from_user.id)
+
+    data = await state.get_data()
+
+    repairman_message = RepairmanMessage(
+        event='become_repairman',
+        telegram_id=data['telegram_id'],
+        is_test_data=False
+    )
+
+    async with channel_pool.acquire() as channel:
+        logger.info('Send data to repairman queue for check repairman status (via button)...')
+        repairman_exchange = await channel.declare_exchange(settings.REPAIRMAN_EXCHANGE_NAME, ExchangeType.DIRECT, durable=True)
+        repairman_queue = await channel.declare_queue(settings.REPAIRMAN_QUEUE_NAME, durable=True)
+        await repairman_queue.bind(repairman_exchange, settings.REPAIRMAN_QUEUE_NAME)
+
+        await repairman_exchange.publish(
+            aio_pika.Message(
+                msgpack.packb(repairman_message),
+            ),
+            settings.REPAIRMAN_QUEUE_NAME
+        )
+    try:
+        await query.message.answer(msg.INFO)
+    except Exception:
+        pass
+
     data = await state.get_data()
     await state.clear()
     await state.update_data(data)

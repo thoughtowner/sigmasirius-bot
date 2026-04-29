@@ -16,7 +16,7 @@ async def application_form_consumer() -> None:
     logging.config.dictConfig(LOGGING_CONFIG)
     logger.info('Starting application_form consumer...')
 
-    async with channel_pool.acquire() as channel:  # type: aio_pika.Channel
+    async with channel_pool.acquire() as channel:
 
         await channel.set_qos(prefetch_count=10)
 

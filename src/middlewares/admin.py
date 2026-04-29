@@ -18,8 +18,22 @@ class AdminMiddleware(BaseMiddleware):
             event: TelegramObject,
             data: Dict[str, Any]
     ) -> Any:
-        current_data = await data['state'].get_data()
-        current_telegram_id = current_data['telegram_id']
+        try:
+            current_data = await data['state'].get_data()
+            current_telegram_id = current_data.get('telegram_id')
+        except Exception:
+            current_data = {}
+            current_telegram_id = None
+
+        if not current_telegram_id:
+            try:
+                current_telegram_id = event.from_user.id  # type: ignore
+            except Exception:
+                current_telegram_id = None
+
+        if not current_telegram_id:
+            # user not identified -> skip
+            raise SkipHandler('Unauthorized')
 
         async with async_session() as db:
             user_result = await db.execute(select(User).filter(User.telegram_id == current_telegram_id))
@@ -29,7 +43,10 @@ class AdminMiddleware(BaseMiddleware):
                 # user not registered -> ask to run /start
                 try:
                     from src.bot import bot
-                    await bot.send_message(current_telegram_id, 'Перед выполнением команды выполните /start')
+                    # avoid double-sending the same unauthorized message
+                    if not data.get('_admin_unauthorized_sent'):
+                        await bot.send_message(current_telegram_id, 'Перед выполнением команды выполните /start')
+                        data['_admin_unauthorized_sent'] = True
                 except Exception:
                     pass
                 raise SkipHandler('Unauthorized')
@@ -37,7 +54,9 @@ class AdminMiddleware(BaseMiddleware):
             if not user.is_admin:
                 try:
                     from src.bot import bot
-                    await bot.send_message(current_telegram_id, 'У вас нет прав для выполнения этой команды.')
+                    if not data.get('_admin_unauthorized_sent'):
+                        await bot.send_message(current_telegram_id, 'У вас нет прав для выполнения этой команды.')
+                        data['_admin_unauthorized_sent'] = True
                 except Exception:
                     pass
                 raise SkipHandler('Unauthorized')

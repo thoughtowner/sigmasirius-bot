@@ -25,7 +25,7 @@ from aiogram.enums import ParseMode
 from src.msg_templates.env import render
 import asyncio
 
-from consumers.start_consumer.handlers.start import handle_start_event
+from consumers.start_consumer.handlers.start import handle_start_event, send_reply_start_keyboard
 from consumers.start_consumer.handlers.check_start import handle_check_start_event
 from consumers.start_consumer.handlers.check_phone_number import handle_check_phone_number_event
 
@@ -39,7 +39,7 @@ async def start_consumer() -> None:
     logging.config.dictConfig(LOGGING_CONFIG)
     logger.info('Starting start consumer...')
 
-    async with channel_pool.acquire() as channel:  # type: aio_pika.Channel
+    async with channel_pool.acquire() as channel:
 
         await channel.set_qos(prefetch_count=10)
 

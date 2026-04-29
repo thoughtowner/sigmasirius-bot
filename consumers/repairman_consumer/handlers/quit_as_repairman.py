@@ -13,7 +13,7 @@ from aiogram.enums import ParseMode
 from src.msg_templates.env import render
 from datetime import datetime
 
-from consumers.start_consumer.handlers.start import handle_start_event
+# import handle_start_event lazily where needed to avoid circular imports
 
 import io
 from src.files_storage.storage_client import images_storage
@@ -60,4 +60,8 @@ async def handle_quit_as_repairman_event(message): # TODO async def handle_quit_
                 caption='Ваш QR-код для уволнения с должности ремонтника. Покажите его на ресепшене.',
             )
 
-    await handle_start_event(message=message)
+    try:
+        from consumers.start_consumer.handlers.start import send_reply_start_keyboard
+        await send_reply_start_keyboard(message.get('telegram_id'), clear_reservation_markups=False)
+    except Exception:
+        pass

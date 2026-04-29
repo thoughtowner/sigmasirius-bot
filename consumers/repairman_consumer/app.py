@@ -27,6 +27,8 @@ import asyncio
 
 from consumers.repairman_consumer.handlers.become_repairman import handle_become_repairman_event
 from consumers.repairman_consumer.handlers.quit_as_repairman import handle_quit_as_repairman_event
+# support assign_repairman events handled by start_consumer.handlers.assign_repairman
+from consumers.start_consumer.handlers.assign_repairman import handle_assign_repairman_event
 
 from .metrics import TOTAL_RECEIVED_MESSAGES
 
@@ -38,7 +40,7 @@ async def repairman_consumer() -> None:
     logging.config.dictConfig(LOGGING_CONFIG)
     logger.info('Starting repairman consumer...')
 
-    async with channel_pool.acquire() as channel:  # type: aio_pika.Channel
+    async with channel_pool.acquire() as channel:
 
         await channel.set_qos(prefetch_count=10)
 
@@ -60,6 +62,8 @@ async def repairman_consumer() -> None:
                                 await handle_become_repairman_event(body)
                             elif body['event'] == 'quit_as_repairman':
                                 await handle_quit_as_repairman_event(body)
+                            elif body['event'] == 'assign_repairman':
+                                await handle_assign_repairman_event(body)
                     except asyncio.CancelledError:
                         # shutdown in progress
                         raise

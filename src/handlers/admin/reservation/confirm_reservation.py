@@ -63,7 +63,7 @@ logging.config.dictConfig(LOGGING_CONFIG)
 
 #     check_msg = CheckUnconfirmedReservationMessage(event='check_unconfirmed_reservation', phone_number=phone_number, telegram_id=admin_id)
 
-#     async with channel_pool.acquire() as channel:  # type: aio_pika.Channel
+#     async with channel_pool.acquire() as channel:
 #         reservation_exchange = await channel.declare_exchange(settings.RESERVATION_EXCHANGE_NAME, ExchangeType.DIRECT, durable=True)
 #         await reservation_exchange.publish(
 #             aio_pika.Message(msgpack.packb(check_msg)),

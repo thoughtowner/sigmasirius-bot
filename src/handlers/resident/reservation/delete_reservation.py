@@ -71,7 +71,7 @@ async def handle_delete_reservation_confirm(query: CallbackQuery):
     await query.answer()
 
     if choice == 'no':
-        await query.message.answer('Операция отменена')
+        return
         return
 
     # User confirmed deletion, send cancel_reservations event
@@ -85,25 +85,40 @@ async def handle_delete_reservation_confirm(query: CallbackQuery):
             })),
             settings.RESERVATION_QUEUE_NAME
         )
+    # Consumer will perform deletion and notify the user directly.
+    try:
+        await query.message.answer('Запрос на удаление броней отправлен. Ответ придёт в личные сообщения бота.')
+    except Exception:
+        pass
+
+
+@router.callback_query(F.data.startswith('cancel_by_id:'))
+async def handle_cancel_by_id(query: CallbackQuery):
+    await query.answer()
+    reservation_id = query.data.split(':', 1)[1]
+    telegram_id = query.from_user.id
+    # Send cancel event to reservation consumer including the message id
+    message_id = None
+    try:
+        message_id = query.message.message_id
+    except Exception:
+        message_id = None
 
     async with channel_pool.acquire() as channel:
-        user_queue = await channel.declare_queue(
-            settings.USER_RESERVATION_QUEUE_TEMPLATE.format(telegram_id=telegram_id),
-            durable=True,
+        reservation_exchange = await channel.declare_exchange(settings.RESERVATION_EXCHANGE_NAME, ExchangeType.DIRECT, durable=True)
+        await reservation_exchange.publish(
+            aio_pika.Message(msgpack.packb({
+                'event': 'cancel_reservation',
+                'telegram_id': telegram_id,
+                'reservation_id': reservation_id,
+                'message_id': message_id,
+                'is_test_data': False,
+            })),
+            settings.RESERVATION_QUEUE_NAME
         )
 
-        retries = 30
-        body = None
-        for _ in range(retries):
-            try:
-                msg = await user_queue.get(no_ack=True)
-                body = msgpack.unpackb(msg.body)
-                break
-            except QueueEmpty:
-                await asyncio.sleep(0.5)
-
-    if not body:
-        await query.message.answer('Ошибка: нет ответа от сервера, повторите позже')
-        return
-
-    await query.message.answer(body.get('msg', 'Операция завершена'))
+    # delete the reservation message locally so UI updates immediately
+    try:
+        await query.message.delete()
+    except Exception:
+        pass

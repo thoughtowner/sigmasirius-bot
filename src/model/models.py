@@ -90,7 +90,7 @@ class ApplicationForm(Base):
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
 
     title: Mapped[str] = mapped_column(Text, nullable=False)
-    description: Mapped[str] = mapped_column(Text, nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=True)
 
     status: Mapped[ApplicationFormStatus] = mapped_column(Enum(ApplicationFormStatus), nullable=False, default=ApplicationFormStatus.NOT_COMPLETED)
 

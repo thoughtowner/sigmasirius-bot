@@ -36,7 +36,7 @@ async def complete_application_form(callback_query: CallbackQuery, state: FSMCon
     #         break
     # await state.update_data(application_forms_data=state_application_forms_data)
 
-    async with channel_pool.acquire() as channel:  # type: aio_pika.Channel
+    async with channel_pool.acquire() as channel:
         logger.info('Send data to application_form queue...')
 
         application_form_exchange = await channel.declare_exchange(settings.APPLICATION_FORM_EXCHANGE_NAME, ExchangeType.DIRECT, durable=True)

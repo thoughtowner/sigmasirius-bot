@@ -45,7 +45,7 @@ async def start_quit_as_repairman(message: Message, state: FSMContext):
         is_test_data=False
     )
 
-    async with channel_pool.acquire() as channel:  # type: aio_pika.Channel
+    async with channel_pool.acquire() as channel:
         logger.info('Send data to repairman queue for check repairman status...')
         repairman_exchange = await channel.declare_exchange(settings.REPAIRMAN_EXCHANGE_NAME, ExchangeType.DIRECT, durable=True)
         repairman_queue = await channel.declare_queue(settings.REPAIRMAN_QUEUE_NAME, durable=True)

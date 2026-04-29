@@ -40,8 +40,8 @@ class User(Base):
     is_admin: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     got_role_from_date: Mapped[date] = mapped_column(Date, nullable=False, default=date.today)
 
-    application_forms: Mapped[List['ApplicationForm']] = relationship(back_populates='user')
-    reservations: Mapped[List['Reservation']] = relationship(back_populates='user')
+    application_forms: Mapped[List['ApplicationForm']] = relationship(back_populates='user', cascade='all, delete-orphan', passive_deletes=True)
+    reservations: Mapped[List['Reservation']] = relationship(back_populates='user', cascade='all, delete-orphan', passive_deletes=True)
 
 
 class Room(Base):
@@ -57,7 +57,7 @@ class Room(Base):
     room_class: Mapped[RoomClass] = mapped_column(Enum(RoomClass), nullable=False)
     people_quantity: Mapped[int] = mapped_column(BigInteger, nullable=False)
 
-    reservations: Mapped[List["Reservation"]] = relationship(back_populates="room")
+    reservations: Mapped[List["Reservation"]] = relationship(back_populates="room", cascade='all, delete-orphan', passive_deletes=True)
 
 
 class Reservation(Base):
@@ -77,10 +77,10 @@ class Reservation(Base):
         default=ReservationStatus.UNCONFIRM
     )
 
-    user_id: Mapped[UUID] = mapped_column(ForeignKey("users.id"))
+    user_id: Mapped[UUID] = mapped_column(ForeignKey("users.id", ondelete='CASCADE'))
     user: Mapped["User"] = relationship(back_populates="reservations")
 
-    room_id: Mapped[UUID | None] = mapped_column(ForeignKey("rooms.id"), nullable=True)
+    room_id: Mapped[UUID | None] = mapped_column(ForeignKey("rooms.id", ondelete='CASCADE'), nullable=True)
     room: Mapped["Room | None"] = relationship(back_populates="reservations")
 
 
@@ -90,9 +90,9 @@ class ApplicationForm(Base):
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
 
     title: Mapped[str] = mapped_column(Text, nullable=False)
-    description: Mapped[str] = mapped_column(Text, nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=True)
 
     status: Mapped[ApplicationFormStatus] = mapped_column(Enum(ApplicationFormStatus), nullable=False, default=ApplicationFormStatus.NOT_COMPLETED)
 
-    user_id: Mapped[UUID] = mapped_column(ForeignKey('users.id'))
+    user_id: Mapped[UUID] = mapped_column(ForeignKey('users.id', ondelete='CASCADE'))
     user: Mapped['User'] = relationship(back_populates='application_forms')

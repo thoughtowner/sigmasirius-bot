@@ -1,7 +1,7 @@
 """add test-only reservation triggers
 
-Revision ID: 0003_add_test_triggers
-Revises: 0002_add_production_triggers
+Revision ID: 0002_add_test_triggers
+Revises: 77d16ce68149_initial_database
 Create Date: 2026-04-23
 """
 from alembic import op
@@ -10,8 +10,8 @@ import sys
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 
-revision = '0003'
-down_revision = '0001'
+revision = '0002'
+down_revision = '77d16ce68149'
 branch_labels = None
 depends_on = None
 

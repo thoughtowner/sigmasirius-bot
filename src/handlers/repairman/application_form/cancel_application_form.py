@@ -23,7 +23,7 @@ async def cancel_application_form(callback_query: CallbackQuery, state: FSMConte
     telegram_id = callback_query.from_user.id
     message_id = callback_query.message.message_id
 
-    async with channel_pool.acquire() as channel:  # type: aio_pika.Channel
+    async with channel_pool.acquire() as channel:
         logger.info('Send data to application_form queue...')
 
         application_form_exchange = await channel.declare_exchange(settings.APPLICATION_FORM_EXCHANGE_NAME,

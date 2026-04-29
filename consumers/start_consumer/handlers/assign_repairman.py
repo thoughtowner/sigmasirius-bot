@@ -65,12 +65,8 @@ async def handle_assign_repairman_event(message):
         if message.get('repairman_id'):
             repairman_id = uuid.UUID(message.get('repairman_id'))
             print(f"[consumer] lookup by repairman_id={repairman_id}")
-            res_q = await db.execute(
-                User.__table__.select().where(
-                    (User.__table__.c.id == repairman_id),
-                )
-            )
-            res_row = res_q.first()
+            res_q = await db.execute(select(User).filter(User.id == repairman_id))
+            res_row = res_q.scalar_one_or_none()
 
             async with channel_pool.acquire() as ch:
                 repairman_exchange = await ch.declare_exchange(settings.REPAIRMAN_EXCHANGE_NAME, ExchangeType.DIRECT, durable=True)
@@ -86,26 +82,28 @@ async def handle_assign_repairman_event(message):
                         aio_pika.Message(msgpack.packb({'found': False, 'reason': 'not_found'})),
                         admin_queue
                     )
-                    
-                    await bot.send_message(res_row.telegram_id, 'Возникла ошибка.')
                     return
                 elif res_row.is_repairman:
-                    print(f"[consumer] repairman not found for id={repairman_id}")
+                    print(f"[consumer] user already repairman id={repairman_id}")
                     await repairman_exchange.publish(
                         aio_pika.Message(msgpack.packb({'found': False, 'reason': 'repairman'})),
                         admin_queue
                     )
-                    
-                    await bot.send_message(res_row.telegram_id, 'Вы уже являетесь ремонтником.')
+                    try:
+                        await bot.send_message(res_row.telegram_id, 'Вы уже являетесь ремонтником.')
+                    except Exception:
+                        pass
                     return
                 elif res_row.is_admin:
-                    print(f"[consumer] repairman not found for id={repairman_id}")
+                    print(f"[consumer] user is admin id={repairman_id}")
                     await repairman_exchange.publish(
                         aio_pika.Message(msgpack.packb({'found': False, 'reason': 'admin'})),
                         admin_queue
                     )
-
-                    await bot.send_message(res_row.telegram_id, 'Вы являетесь администратором. Вы не может иметь несколько ролей.')
+                    try:
+                        await bot.send_message(res_row.telegram_id, 'Вы являетесь администратором. Вы не может иметь несколько ролей.')
+                    except Exception:
+                        pass
                     return
 
                 await db.execute(

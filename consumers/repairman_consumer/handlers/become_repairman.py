@@ -13,8 +13,6 @@ from aiogram.enums import ParseMode
 from src.msg_templates.env import render
 from datetime import datetime
 
-from consumers.start_consumer.handlers.start import handle_start_event
-
 import io
 from src.files_storage.storage_client import images_storage
 

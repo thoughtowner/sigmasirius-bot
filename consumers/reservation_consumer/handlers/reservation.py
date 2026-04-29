@@ -16,7 +16,6 @@ from aiogram.enums import ParseMode
 from src.msg_templates.env import render
 from datetime import datetime
 
-from consumers.start_consumer.handlers.start import handle_start_event
 
 import io
 from src.files_storage.storage_client import images_storage
@@ -66,11 +65,58 @@ async def handle_reservation_event(message): # TODO async def handle_reservation
                 logger.exception('Failed to upload reservation QR to storage')
 
             image_file = BufferedInputFile(file=buf.read(), filename='reservation_qr.png')
-            # import bot lazily to avoid circular import at module import time
-            from src.bot import bot
-            await bot.send_photo(
-                chat_id=message['telegram_id'], photo=image_file,
-                caption='Ваш QR-код для заселения. Покажите его на ресепшене.',
+            # prepare reservation text
+            res_text = (
+                f"ID: {message['reservation_id']}\n"
+                f"Гостей: {message['people_quantity']}\n"
+                f"Класс: {message['room_class']}\n"
+                f"Заезд: {message['check_in_date']}\n"
+                f"Выезд: {message['eviction_date']}\n"
             )
 
-    await handle_start_event(message=message)
+            # import bot lazily to avoid circular import at module import time
+            from src.bot import bot
+            # include an inline cancel button that the bot will handle
+            try:
+                from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+                kb = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text='Отменить', callback_data=f'cancel_by_id:{message["reservation_id"]}')]])
+            except Exception:
+                kb = None
+
+            sent_msg = await bot.send_photo(
+                chat_id=message['telegram_id'], photo=image_file,
+                caption='Ваш QR-код для заселения. Покажите его на ресепшене.\n\n' + res_text,
+                reply_markup=kb
+            )
+
+            # store mapping in redis so we can later remove inline markup for old reservations
+            try:
+                from src.storage.redis import redis_storage
+                import json
+                member = {'telegram_id': message['telegram_id'], 'message_id': sent_msg.message_id}
+                key = f'reservation:{str(message["reservation_id"])}:members'
+                current_raw = await redis_storage.get(key)
+                if current_raw:
+                    try:
+                        current = json.loads(current_raw)
+                    except Exception:
+                        current = []
+                else:
+                    current = []
+                current.append(member)
+                await redis_storage.set(key, json.dumps(current))
+                # reverse lookup
+                await redis_storage.set(f'reservation_message_map:{message["telegram_id"]}:{sent_msg.message_id}', str(message['reservation_id']))
+            except Exception:
+                logger.exception('Failed to write reservation mapping into redis')
+
+    # send start keyboard but do not clear reservation markups here
+    try:
+        from consumers.start_consumer.handlers.start import send_reply_start_keyboard
+        await send_reply_start_keyboard(message.get('telegram_id'), clear_reservation_markups=False)
+    except Exception:
+        pass
+
+    # Do not send start keyboard here — it would remove the cancel button immediately.
+    # The start keyboard (which also clears stale reservation markups) should be
+    # invoked only when the user executes a new command.

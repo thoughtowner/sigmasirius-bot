@@ -22,8 +22,6 @@ bot = Bot(token=settings.BOT_TOKEN, default=default)
 
 
 async def handle_fire_repairman_event(message):
-    admin_queue = settings.USER_REPAIRMAN_QUEUE_TEMPLATE.format(telegram_id=message.get('telegram_id'))
-
     print(f"[consumer] handle_check_unconfirmed_repairman_event message={message}")
     async with async_session() as db:
         # If repairman_id provided, find by id
@@ -40,8 +38,8 @@ async def handle_fire_repairman_event(message):
             async with channel_pool.acquire() as ch:
                 repairman_exchange = await ch.declare_exchange(settings.REPAIRMAN_EXCHANGE_NAME, ExchangeType.DIRECT, durable=True)
                 # ensure admin reply queue exists and is bound to exchange
-                reply_queue = await ch.declare_queue(admin_queue, durable=True)
-                await reply_queue.bind(repairman_exchange, admin_queue)
+                reply_queue = await ch.declare_queue(settings.REPAIRMAN_QUEUE_NAME, durable=True)
+                await reply_queue.bind(repairman_exchange, settings.REPAIRMAN_QUEUE_NAME)
 
                 from src.bot import bot
 
@@ -49,7 +47,7 @@ async def handle_fire_repairman_event(message):
                     print(f"[consumer] repairman not found for id={repairman_id}")
                     await repairman_exchange.publish(
                         aio_pika.Message(msgpack.packb({'found': False, 'reason': 'not_found'})),
-                        admin_queue
+                        settings.REPAIRMAN_QUEUE_NAME
                     )
                     
                     await bot.send_message(res_row.telegram_id, 'Возникла ошибка.')
@@ -58,7 +56,7 @@ async def handle_fire_repairman_event(message):
                     print(f"[consumer] repairman not found for id={repairman_id}")
                     await repairman_exchange.publish(
                         aio_pika.Message(msgpack.packb({'found': False, 'reason': 'repairman'})),
-                        admin_queue
+                        settings.REPAIRMAN_QUEUE_NAME
                     )
                     
                     await bot.send_message(res_row.telegram_id, 'Вы не являетесь ремонтником!')
@@ -69,10 +67,10 @@ async def handle_fire_repairman_event(message):
                 )
                 await db.commit()
 
-                print(f"[consumer] repairman found id={repairman_id}, publishing payload to admin_queue={admin_queue}")
+                print(f"[consumer] repairman found id={repairman_id}, publishing payload to {settings.REPAIRMAN_QUEUE_NAME}")
                 await repairman_exchange.publish(
                     aio_pika.Message(msgpack.packb({'found': True})),
-                    admin_queue
+                    settings.REPAIRMAN_QUEUE_NAME
                 )
                 
                 await bot.send_message(res_row.telegram_id, 'Вы успешно уволены с должности ремонтника!')

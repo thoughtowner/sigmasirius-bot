@@ -2,7 +2,7 @@ from typing import Callable, Dict, Any, Awaitable
 
 from aiogram import BaseMiddleware
 from aiogram.dispatcher.event.bases import SkipHandler
-from aiogram.types import Message, TelegramObject
+from aiogram.types import Message, CallbackQuery, TelegramObject
 
 from ..storage.db import async_session
 
@@ -65,6 +65,14 @@ class ResidentMiddleware(BaseMiddleware):
                     text = (event.text or '').strip()
                     if text == ADD_APPLICATION_FORM:
                         is_create_application = True
+                else:
+                    # support callback queries from start inline buttons
+                    try:
+                        cb_data = getattr(event, 'data', None)
+                        if cb_data and cb_data.startswith('start_cmd:add_application_form'):
+                            is_create_application = True
+                    except Exception:
+                        is_create_application = False
             except Exception:
                 is_create_application = False
 

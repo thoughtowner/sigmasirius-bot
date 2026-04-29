@@ -18,8 +18,21 @@ class RepairmanMiddleware(BaseMiddleware):
             event: TelegramObject,
             data: Dict[str, Any]
     ) -> Any:
-        current_data = await data['state'].get_data()
-        current_telegram_id = current_data['telegram_id']
+        try:
+            current_data = await data['state'].get_data()
+            current_telegram_id = current_data.get('telegram_id')
+        except Exception:
+            current_data = {}
+            current_telegram_id = None
+
+        if not current_telegram_id:
+            try:
+                current_telegram_id = event.from_user.id  # type: ignore
+            except Exception:
+                current_telegram_id = None
+
+        if not current_telegram_id:
+            raise SkipHandler('Unauthorized')
 
         async with async_session() as db:
             user_result = await db.execute(select(User).filter(User.telegram_id == current_telegram_id))

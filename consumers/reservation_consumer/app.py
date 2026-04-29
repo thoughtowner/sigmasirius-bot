@@ -18,15 +18,14 @@ from sqlalchemy import select, insert
 
 from .metrics import TOTAL_RECEIVED_MESSAGES
 
-from .handlers.check_reservation import handle_check_reservation_event
 from .handlers.reservation import handle_reservation_event
 from .handlers.check_unconfirmed_reservation import handle_check_unconfirmed_reservation_event
-from .handlers.resend_qr import handle_resend_reservation_qr_event
 from .handlers.pick_and_assign import handle_pick_room_event, handle_assign_room_event
 from .handlers.manage_list_cancel import (
     handle_list_my_reservations_event,
     handle_list_my_reservations_archive_event,
     handle_cancel_reservations_event,
+    handle_cancel_reservation_event,
 )
 
 
@@ -34,7 +33,7 @@ async def reservation_consumer() -> None:
     logging.config.dictConfig(LOGGING_CONFIG)
     logger.info('Starting reservation consumer...')
 
-    async with channel_pool.acquire() as channel:  # type: aio_pika.Channel
+    async with channel_pool.acquire() as channel:
 
         await channel.set_qos(prefetch_count=10)
 
@@ -50,9 +49,7 @@ async def reservation_consumer() -> None:
                     body = msgpack.unpackb(message.body)
                     logger.info("Received message %s", body)
 
-                    if body['event'] == 'check_reservation':
-                        await handle_check_reservation_event(body)
-                    elif body['event'] == 'reservation':
+                    if body['event'] == 'reservation':
                         await handle_reservation_event(body)
                     elif body['event'] == 'check_unconfirmed_reservation':
                         await handle_check_unconfirmed_reservation_event(body)
@@ -62,8 +59,8 @@ async def reservation_consumer() -> None:
                         await handle_list_my_reservations_archive_event(body)
                     elif body['event'] == 'cancel_reservations':
                         await handle_cancel_reservations_event(body)
-                    elif body['event'] == 'resend_qr':
-                        await handle_resend_reservation_qr_event(body)
+                    elif body['event'] == 'cancel_reservation':
+                        await handle_cancel_reservation_event(body)
 
                     elif body['event'] == 'pick_room':
                         await handle_pick_room_event(body)
